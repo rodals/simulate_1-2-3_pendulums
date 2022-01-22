@@ -319,11 +319,12 @@ def animate_triple_pendulum(f, output):
         ax_en_tot.plot(en_tot, label='Energia Totale')
         ax_en_k_p.plot(en_k, label='Energia Cinetica')
         ax_en_k_p.plot(en_p, label='Energia Potenziale')
-        return line1, line2, line3, line1_tail, line2_tail, line3_tail
+        print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing", end="\r") 
 
     
     anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
+    print(" Done             ")
 #    plt.show()
     return anim
 
@@ -440,7 +441,6 @@ def animate_double_pendulum(f, output):
         ax_en_tot.plot(en_tot, label='Energia Totale')
         ax_en_k_p.plot(en_k, label='Energia Cinetica')
         ax_en_k_p.plot(en_p, label='Energia Potenziale')
-        return line1, line2, line1_tail, line2_tail 
 
     
     anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
@@ -540,7 +540,6 @@ def animate_single_pendulum(f, output):
         ax_en_tot.plot(en_tot, label='Energia Totale')
         ax_en_k_p.plot(en_k, label='Energia Cinetica')
         ax_en_k_p.plot(en_p, label='Energia Potenziale')
-        return line1, line1_tail  
 
     
     anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
@@ -562,7 +561,7 @@ grad0_1, grad0_2, grad0_3  = (135, 135, 135)
 thetas0 = [grad0_1*2*np.pi / 360, grad0_2*2*np.pi / 360, grad0_3*2*np.pi / 360]
 omegas0  = [0, 0, 0]
 g = 9.81
-h = 0.01
+h = 0.001
 tempo_simulazione = 10
 framepersec = 30
 
@@ -570,11 +569,14 @@ framepersec = 30
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
 f_anim_pendulum = {1:animate_single_pendulum, 2:animate_double_pendulum, 3:animate_triple_pendulum}
 d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet}
+n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Implicit Verlet \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n")
 
-f_int = d_f_int[int(input("Method of Numerical integration ? \n  1. Runge Kutta 4 \n  2. Velocity Verlet \n  3. implicit Verlet \n  4. Implicit Eulero \n  5. Semi-Implicit Eulero  \n  6. Explicit Eulero \n  7. Stormer Verlet \n"))]
-
-y_n = input("Running with Default configuration? [Y/n] \n pendulum = 3 \n time step = 0.001 \n theta_0 = (135, 135, 135)grad \n l = (1, 1, 1)m \n m = (1, 1, 1)Kg \n fps = 30 \n time simulation = 10s").lower()
+if (n_i == ""): f_int = runge_kutta4
+else: f_int = d_f_int[int(n_i)]
+   
 n_p = 3
+
+y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = [{grad0_1}, {grad0_2}, {grad0_3}]grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {framepersec}s**-1 \n   time simulation = {tempo_simulazione}s \n   g = {g}m/s**2 \n").lower()
 if (y_n == "n"):
     n_p = int(input("n pendula to simulate? [1, 2, 3]"))
     if( n_p != 1 and n_p != 2 and n_p != 3):
@@ -614,5 +616,5 @@ elif y_n != "y" and y_n !="":
 #f_int = [runge_kutta4, velocity_verlet, trapezoide_implicito, eulero_implicito, eulero_semi_implicito, eulero_esplicito, stormer_verlet] 
 f_pendulum = f_anim_pendulum[n_p]
 
-print("Running...")
+print(f"Running {f_int.__name__}...")
 f_pendulum(f_int, f"{f_int.__name__}_{n_pend_string[n_p]}.mp4")
