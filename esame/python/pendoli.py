@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
+from  time import perf_counter
 from matplotlib.animation import FuncAnimation
 
 def stormer_verlet(f, u):
@@ -178,10 +179,9 @@ def energia_cinetica(p, n):
 
 def energia_potenziale(p, n):
     x, y = get_xy_coords(p)
-    l = ( lengths[0], lengths[1], lengths[2])
     ep = 0
     for i in range(0, n):
-        ep += g*(masses[0]*y[i]) + g*(masses[0]*l[i])
+        ep += g*(masses[0]*y[i]) + g*(masses[0]*sum(lengths[0:i+1]))
     return ep
 
 def energia_totale(p, n):
@@ -322,7 +322,7 @@ def animate_triple_pendulum(f, output):
         print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing", end="\r") 
 
     
-    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
+    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
     print(" Done             ")
 #    plt.show()
@@ -441,10 +441,12 @@ def animate_double_pendulum(f, output):
         ax_en_tot.plot(en_tot, label='Energia Totale')
         ax_en_k_p.plot(en_k, label='Energia Cinetica')
         ax_en_k_p.plot(en_p, label='Energia Potenziale')
+        print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing", end="\r") 
 
     
-    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
+    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
+    print(" Done             ")
 #    plt.show()
     return anim
 
@@ -542,8 +544,9 @@ def animate_single_pendulum(f, output):
         ax_en_k_p.plot(en_p, label='Energia Potenziale')
 
     
-    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
+    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
+    print(" Done             ")
 #    plt.show()
     return anim
 
@@ -555,11 +558,12 @@ def animate_single_pendulum(f, output):
 # angolo iniziale in gradi
 #grad0_1, grad0_2, grad0_3 =  (135, 135, 135)
 #thetas0  =  (grad0_1*2*np.pi / 360 ,grad0_2*2*np.pi / 360 ,grad0_3*2*np.pi / 360)
-lengths  = [1, 1, 1]
-masses   = [1, 1, 1]
-grad0_1, grad0_2, grad0_3  = (135, 135, 135)
-thetas0 = [grad0_1*2*np.pi / 360, grad0_2*2*np.pi / 360, grad0_3*2*np.pi / 360]
-omegas0  = [0, 0, 0]
+lengths  = [1., 1., 1.]
+masses   = [1., 1., 1.]
+grads0 = np.array([135, 135, 135])
+thetas0 = grads0 * 2 * np.pi /360
+omegas0_grad = np.zeros(3)
+omegas0  = omegas0_grad * 2 * np.pi / 360
 g = 9.81
 h = 0.001
 tempo_simulazione = 10
@@ -576,45 +580,72 @@ else: f_int = d_f_int[int(n_i)]
    
 n_p = 3
 
-y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = [{grad0_1}, {grad0_2}, {grad0_3}]grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {framepersec}s**-1 \n   time simulation = {tempo_simulazione}s \n   g = {g}m/s**2 \n").lower()
+y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = {grads0}grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {framepersec}s**-1 \n   time simulation = {tempo_simulazione}s \n   g = {g}m/s**2 \n").lower()
 if (y_n == "n"):
-    n_p = int(input("n pendula to simulate? [1, 2, 3]"))
-    if( n_p != 1 and n_p != 2 and n_p != 3):
-        print("n pendola not supported atm.") 
-        exit()
+    n_p = (input("n pendula to simulate? [1, 2, [3]]   "))
+    if( n_p in ["1", "2", "3"]):
+        n_p = int(n_p) 
+    elif (not n_p): n_p = 3
+    else: exit("n pendola not supported atm.")
+
     for i in range(n_p):
         print(f"Pend n. {i+1} :")
-        l = input(" Lenght? [1] m")
-        if (l != ""): lengths[i] = float(l)
-        m = input(" Mass? [1] Kg")
-        if (m != ""): masses[i] = float(m)
-        theta = input(" Initial theta? [135] Grad")
-        if (theta != ""): thetas0[i] =  float(theta)*2*np.pi / 360 
-        omega = input(" Initial omega? [0] Grad/s")
-        if (omega != ""): omegas0[i] = float(omega)*2*np.pi / 360
+        l = input(f" Lenght [{lengths[i]}] m:   ")
+        if (l.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): lengths[i] = float(l)
+        elif (l): 
+            print("Input non valido.")
+            exit()
+        m = input(f" Mass [{masses[i]}] Kg:   ")
+        if (m.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): masses[i] = float(m)
+        elif (m): 
+            print("Input non valido.")
+            exit()
+        theta = input(f" Initial theta [{grads0[i]}] Grad:   ")
+        if (theta.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): thetas0[i] =  float(theta)*2*np.pi / 360 
+        elif (theta): 
+            print("Input non valido.")
+            exit()
+        omega = input(f" Initial omega [{omegas0_grad[i]}] Grad/s:   ")
+        if (omega.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): omegas0[i] = float(omega)*2*np.pi / 360
+        elif (omega): 
+            print("Input non valido.")
+            exit()
         print()
 
 
-    gravity = input("Gravity? [9.81] m/s**2")
-    if (gravity != ""): g = float(gravity)
+    gravity = input(f"Gravity [{g}] m/s**2 :   ")
+    if (gravity.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): g = float(gravity)
+    elif (gravity): 
+        print("Input non valido.")
+        exit()
 
-    step = input("Default time steps? [0.01] s")
-    if (step != ""): h = float(step)
+    step = input(f"Default time steps [{h}] s :   ")
+    if (step.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): h = float(step)
+    elif (step): 
+        print("Input non valido.")
+        exit()
 
-    time = input("Time simulation? [10] s")
-    if (time != ""): tempo_simulazione = float(time)
+    time = input(f"Time simulation [{tempo_simulazione}] s :   ")
+    if (time.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): tempo_simulazione = float(time)
+    elif (time): 
+        print("Input non valido.")
+        exit()
 
-    fps = input("Fps? [30]")
-    if (fps != ""): framepersec = int(fps)
-
-       
+    fps = input(f"Fps [{framepersec}] :   ")
+    if (fps.isdigit()): framepersec = int(fps)
+    elif (fps): 
+        print("Input non valido.")
+        exit()
  
-elif y_n != "y" and y_n !="":
+elif y_n != "y" and y_n:
         print("wrong input.")
         exit()
 
 #f_int = [runge_kutta4, velocity_verlet, trapezoide_implicito, eulero_implicito, eulero_semi_implicito, eulero_esplicito, stormer_verlet] 
 f_pendulum = f_anim_pendulum[n_p]
-
+t_start = perf_counter()
 print(f"Running {f_int.__name__}...")
 f_pendulum(f_int, f"{f_int.__name__}_{n_pend_string[n_p]}.mp4")
+t_end = perf_counter()
+#t_prec = 2
+print(f"Tempo di esecuzione: {t_end - t_start: .4}")
