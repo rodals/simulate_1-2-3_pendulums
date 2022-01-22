@@ -212,7 +212,6 @@ def animate_triple_pendulum(f, output):
     fig = plt.figure()
     ax_pend = plt.subplot(221)
     ax_polar = fig.add_subplot(222, projection='polar')
-    ax_polar.set_theta_offset(np.pi/2)
     ax_en_tot = fig.add_subplot(223)
     ax_en_k_p = fig.add_subplot(224)
     #ax_lissajous = fig.add_subplot(225)
@@ -227,11 +226,18 @@ def animate_triple_pendulum(f, output):
     line3, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
 
 # tail and points
-    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k')   # line for Earth
-    line2_tail, = ax_pend.plot([], [], 'o-',color = '#ff3bd2',markersize = 12, markerfacecolor = '#f66338',linewidth=2, markevery=10000, markeredgecolor = 'k')   # line for Earth
-    line3_tail, =  ax_pend.plot([], [], 'o-',color = '#af3bd2',markersize = 12, markerfacecolor = '#af6338',linewidth=2, markevery=10000, markeredgecolor = 'k')   # line for Earth
+    line1_tail, = ax_pend.plot([], [], 'o-',color = 'xkcd:lime',markersize = 12, markerfacecolor = 'xkcd:bright green',linewidth=2, markevery=10000, markeredgecolor = 'k') 
+    line2_tail, = ax_pend.plot([], [], 'o-',color = 'xkcd:peach',markersize = 12, markerfacecolor = 'xkcd:salmon',linewidth=2, markevery=10000, markeredgecolor = 'k') 
+    line3_tail, =  ax_pend.plot([], [], 'o-',color = 'xkcd:azure',markersize = 12, markerfacecolor = 'xkcd:sky blue',linewidth=2, markevery=10000, markeredgecolor = 'k') 
     time_text = ax_pend.text(0.02, 0.95, '', transform=ax_pend.transAxes)
     energy_text = ax_pend.text(0.02, 0.90, '', transform=ax_pend.transAxes)
+    polar_line1_tail, = ax_polar.plot([thetas0[0]], [lengths[0]], 'o-',color = 'xkcd:lime',markersize = 2, markerfacecolor = 'xkcd:teal',linewidth=2, markevery=10000, markeredgecolor = 'k') 
+    polar_line2_tail, = ax_polar.plot([thetas0[1]], [lengths[1]], 'o-',color = 'xkcd:peach',markersize = 4, markerfacecolor = 'xkcd:salmon',linewidth=2, markevery=10000, markeredgecolor = 'k') 
+    polar_line3_tail, =  ax_polar.plot([thetas0[2]], [lengths[2]], 'o-',color = 'xkcd:azure',markersize = 3, markerfacecolor = 'xkcd:sky blue',linewidth=2, markevery=10000, markeredgecolor = 'k') 
+    # first plot then set otherwise it doesn't work
+    ax_polar.set_theta_zero_location("S")
+    ax_polar.set_rmax(sum(lengths))
+    ax_polar.legend([(polar_line1_tail, polar_line2_tail, polar_line3_tail)], ['1', '2', '3'])
 
 # graphs 
     en_tot = [energia_totale(u0, n_pend)]
@@ -251,6 +257,9 @@ def animate_triple_pendulum(f, output):
         line1_tail.set_data([], [])
         line2_tail.set_data([], [])
         line3_tail.set_data([], [])
+        polar_line1_tail.set_data([], [])
+        polar_line2_tail.set_data([], [])
+        polar_line3_tail.set_data([], [])
         time_text.set_text('')
         energy_text.set_text('')
         return line, time_text, energy_text
@@ -301,19 +310,22 @@ def animate_triple_pendulum(f, output):
         line1_tail.set_data(x1_plot[i+1:max(1,i+1-tail1):-1], y1_plot[i+1:max(1,i+1-tail1):-1])
         line2_tail.set_data(x2_plot[i+1:max(1,i+1-tail2):-1], y2_plot[i+1:max(1,i+1-tail2):-1])
         line3_tail.set_data(x3_plot[i+1:max(1,i+1-tail3):-1], y3_plot[i+1:max(1,i+1-tail3):-1])
+
+        polar_line3_tail.set_data(theta3_plot[::-1], r3_plot[::-1])
+        polar_line2_tail.set_data(theta2_plot[::-1], r2_plot[::-1])
+        polar_line1_tail.set_data(theta1_plot[::-1], r1_plot[::-1])
+
         time_text.set_text('time = %.1f' % (t))
         energy_text.set_text('energy = %.9f J' % en_tot[i+1])
         
         ax_en_tot.clear()
         ax_en_k_p.clear()
-        ax_polar.clear()
+#        ax_polar.clear()
 #        ax_lissajous.clear()
-        ax_polar.set_theta_zero_location("S")
 
-        ax_polar.plot(theta1_plot, r1_plot)
-        ax_polar.plot(theta2_plot, r2_plot)
-        ax_polar.plot(theta3_plot, r3_plot)
-
+#        ax_polar.plot(theta1_plot, r1_plot)
+#        ax_polar.plot(theta2_plot, r2_plot)
+#        ax_polar.plot(theta3_plot, r3_plot)
 #        ax_lissajous.plot(theta1_plot, theta2_plot)
 
         ax_en_tot.plot(en_tot, label='Energia Totale')
@@ -362,8 +374,8 @@ def animate_double_pendulum(f, output):
     line2, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
 
 # tail and points
-    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k')   # line for Earth
-    line2_tail, = ax_pend.plot([], [], 'o-',color = '#ff3bd2',markersize = 12, markerfacecolor = '#f66338',linewidth=2, markevery=10000, markeredgecolor = 'k')   # line for Earth
+    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k')  
+    line2_tail, = ax_pend.plot([], [], 'o-',color = '#ff3bd2',markersize = 12, markerfacecolor = '#f66338',linewidth=2, markevery=10000, markeredgecolor = 'k')  
     time_text = ax_pend.text(0.02, 0.95, '', transform=ax_pend.transAxes)
     energy_text = ax_pend.text(0.02, 0.90, '', transform=ax_pend.transAxes)
 
@@ -479,7 +491,7 @@ def animate_single_pendulum(f, output):
     line1, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
 
 # tail and points
-    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k')   # line for Earth
+    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k') 
     time_text = ax_pend.text(0.02, 0.95, '', transform=ax_pend.transAxes)
     energy_text = ax_pend.text(0.02, 0.90, '', transform=ax_pend.transAxes)
 
