@@ -3,21 +3,6 @@ import numpy as np
 import copy
 from matplotlib.animation import FuncAnimation
 
-class Punto:
-    def __init__(self, mass, theta, r, w, dw )
-        self.mass = mass
-        self.theta = theta
-        self.age = r
-        self.w = w
-        self.dw = dw
-    def
-class Simulazione:
-    def __init__(self, h, metodo_integrazione, punti, pendoli) 
-    self.h = h
-    self.metodo_integrazione = metodo_integrazione
-    self.punti = punti
-    self.pendoli = pendoli
-
 def stormer_verlet(f, u):
     u0 = u[0]
     um1 = u[1]
@@ -276,6 +261,7 @@ def animate_triple_pendulum(f, output):
         tail1 = 10
         tail2 = 10
         tail3 = 10
+        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
         for x in range(fps_jump):
             u = f(f_triple, u)
             t+=h
@@ -336,8 +322,7 @@ def animate_triple_pendulum(f, output):
         return line1, line2, line3, line1_tail, line2_tail, line3_tail
 
     
-    duration = tempo_simulazione
-    anim = FuncAnimation(fig, func = animate, interval=int(1000/framepersec), frames = framepersec * tempo_simulazione, repeat = False, blit =False)
+    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
 #    plt.show()
     return anim
@@ -406,6 +391,7 @@ def animate_double_pendulum(f, output):
         nonlocal u
         tail1 = 10
         tail2 = 10
+        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
         for x in range(fps_jump):
             u = f(f_double, u)
             t+=h
@@ -457,8 +443,7 @@ def animate_double_pendulum(f, output):
         return line1, line2, line1_tail, line2_tail 
 
     
-    duration = tempo_simulazione
-    anim = FuncAnimation(fig, func = animate, interval=int(1000/framepersec), frames = framepersec * tempo_simulazione, repeat = False, blit =False)
+    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
 #    plt.show()
     return anim
@@ -518,6 +503,7 @@ def animate_single_pendulum(f, output):
         global t
         nonlocal u
         tail1 = 10
+        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
         for x in range(fps_jump):
             u = f(f_single, u)
             t+=h
@@ -557,100 +543,76 @@ def animate_single_pendulum(f, output):
         return line1, line1_tail  
 
     
-    duration = tempo_simulazione
-    anim = FuncAnimation(fig, func = animate, interval=int(1000/framepersec), frames = framepersec * tempo_simulazione, repeat = False, blit =False)
+    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = min(framepersec * tempo_simulazione, int(tempo_simulazione/h)), repeat = False, blit =False)
     anim.save(output)
 #    plt.show()
     return anim
 
 #dati iniziali di default
-tempo_simulazione = 10
 
-h = 0.01
-g = 9.81
-framepersec = 10
 
-fps_jump = int((1/h)/framepersec) # ogni quanto devo saltare di scrivere i frame per ottenere framepersec  foto in un secondo
 
-l1, l2, l3 = (1, 1, 1)
-m1, m2, m3 = (1, 1, 1)
-w1, w2, w3 = (0, 0, 0)
 # condizioni iniziali
 # angolo iniziale in gradi
-grad0_1, grad0_2, grad0_3 =  (130, 130, 130)
-thetas0  =  (grad0_1*2*np.pi / 360 ,grad0_2*2*np.pi / 360 ,grad0_3*2*np.pi / 360)
-lengths  = (l1, l2, l3)
-masses   = (m1, m2, m3)
-omegas0  =  ( w1, w2, w3)
+#grad0_1, grad0_2, grad0_3 =  (135, 135, 135)
+#thetas0  =  (grad0_1*2*np.pi / 360 ,grad0_2*2*np.pi / 360 ,grad0_3*2*np.pi / 360)
+lengths  = [1, 1, 1]
+masses   = [1, 1, 1]
+grad0_1, grad0_2, grad0_3  = (135, 135, 135)
+thetas0 = [grad0_1*2*np.pi / 360, grad0_2*2*np.pi / 360, grad0_3*2*np.pi / 360]
+omegas0  = [0, 0, 0]
+g = 9.81
+h = 0.01
+tempo_simulazione = 10
+framepersec = 30
 
-print("Running with Default configuration? n pendula = 3, h = ..., theta_0 = (. , . , .)  [Y/n]")
-y_n = input().lower()
+# dictionary to simplify life for input n other things
+n_pend_string = {1: "single", 2: "double", 3: "triple"}
+f_anim_pendulum = {1:animate_single_pendulum, 2:animate_double_pendulum, 3:animate_triple_pendulum}
+d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet}
+
+f_int = d_f_int[int(input("Method of Numerical integration ? \n  1. Runge Kutta 4 \n  2. Velocity Verlet \n  3. implicit Verlet \n  4. Implicit Eulero \n  5. Semi-Implicit Eulero  \n  6. Explicit Eulero \n  7. Stormer Verlet \n"))]
+
+y_n = input("Running with Default configuration? [Y/n] \n pendulum = 3 \n time step = 0.001 \n theta_0 = (135, 135, 135)grad \n l = (1, 1, 1)m \n m = (1, 1, 1)Kg \n fps = 30 \n time simulation = 10s").lower()
+n_p = 3
 if (y_n == "n"):
-    print("n pendula to simulate? [1, 2, 3]")
-    n_p = input()
-    if(not (n_p == [1, 2, 3]).any()):
+    n_p = int(input("n pendula to simulate? [1, 2, 3]"))
+    if( n_p != 1 and n_p != 2 and n_p != 3):
         print("n pendola not supported atm.") 
-        sys.exit()
-
-    print("Default Lenghts? [1, 1, 1]m")
-    y_n = input().lower()
-    if (y_n == "n"):
-        for i in range(n_p):
-            print("l %i", (i+1))
-            lengths[i] = input()
-
-    print("Default Masses? [1, 1, 1]Kg")
-    y_n = input().lower()
-    if (y_n == "" or y_n == "y"):
-        for i in range(n_p):
-            print("l %i", (i+1))
-            masses[i] = input()
+        exit()
+    for i in range(n_p):
+        print(f"Pend n. {i+1} :")
+        l = input(" Lenght? [1] m")
+        if (l != ""): lengths[i] = float(l)
+        m = input(" Mass? [1] Kg")
+        if (m != ""): masses[i] = float(m)
+        theta = input(" Initial theta? [135] Grad")
+        if (theta != ""): thetas0[i] =  float(theta)*2*np.pi / 360 
+        omega = input(" Initial omega? [0] Grad/s")
+        if (omega != ""): omegas0[i] = float(omega)*2*np.pi / 360
+        print()
 
 
-    print("Default Initial angulum? [130, 130, 130]Grad")
-    y_n = input().lower()
-    if (y_n == "" or y_n == "y"):
-        for i in range(n_p):
-            print("theta %i", (i+1))
-            thetas0[i] = input()
+    gravity = input("Gravity? [9.81] m/s**2")
+    if (gravity != ""): g = float(gravity)
 
-    print("Default Gravity? [9.81] m/s**2")
-    y_n = input().lower()
-    if (y_n == "" or y_n == "y"):
-        g = input()
+    step = input("Default time steps? [0.01] s")
+    if (step != ""): h = float(step)
 
-    print("Default time steps? [0.01] s")
-    y_n = input().lower()
-    if (y_n == "" or y_n == "y"):
-        h = input()
+    time = input("Time simulation? [10] s")
+    if (time != ""): tempo_simulazione = float(time)
+
+    fps = input("Fps? [30]")
+    if (fps != ""): framepersec = int(fps)
+
+       
  
-   
 elif y_n != "y" and y_n !="":
-    print("input errato.")
-    exit()
+        print("wrong input.")
+        exit()
+
+#f_int = [runge_kutta4, velocity_verlet, trapezoide_implicito, eulero_implicito, eulero_semi_implicito, eulero_esplicito, stormer_verlet] 
+f_pendulum = f_anim_pendulum[n_p]
 
 print("Running...")
-
-
-#animate_triple_pendulum(velocity_verlet, "vv_triple.mp4")
-#animate_triple_pendulum(eulero_semi_implicito, "eu_simp_triple.mp4")
-#animate_triple_pendulum(eulero_implicito, "eu_impl_triple.mp4")
-#animate_triple_pendulum(trapezoide_implicito, "trap_impl_triple.mp4")
-#animate_triple_pendulum(eulero_simplettico, "eu_simp_triple.mp4")
-#animate_double_pendulum(runge_kutta4, "rk4_double.mp4")
-animate_double_pendulum(trapezoide_implicito, "trap_impl_double.mp4")
-#animate_double_pendulum(velocity_verlet, "vv_double.mp4")
-#animate_double_pendulum(eulero_simplettico, "eu_simp_double.mp4")
-#animate_double_pendulum(eulero_implicito, "eu_impl_double.mp4")
-#animate_single_pendulum(velocity_verlet, "vv_single.mp4")
-#animate_single_pendulum(eulero_simplettico, "eu_simp_single.mp4")
-#animate_single_pendulum(eulero_implicito, "eu_impl_single.mp4")
-#animate_single_pendulum(runge_kutta4, "rk4_single.mp4")
-#animate_single_pendulum(stormer_verlet, "sv_single.mp4")
-#animate_double_pendulum(eulero_esplicito, "eu_expl_single.mp4")
-#animate_double_pendulum(runge_kutta4, "rk4_double.mp4")
-#animate_double_pendulum(stormer_verlet, "sv_double.mp4")
-#animate_double_pendulum(eulero_esplicito, "eu_expl_double.mp4")
-#animate_triple_pendulum(stormer_verlet, "sv_triple.mp4")
-#animate_triple_pendulum(runge_kutta4, "rk4_triple.mp4")
-#animate_triple_pendulum(eulero_esplicito, "eulero_exp_triple.mp4")
+f_pendulum(f_int, f"{f_int.__name__}_{n_pend_string[n_p]}.mp4")
