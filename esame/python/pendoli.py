@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import copy
 from  time import perf_counter
-from matplotlib.animation import FuncAnimation
+#from matplotlib.animation import FuncAnimation
+import matplotlib.animation as animation
 
 def stormer_verlet(f, u):
     u0 = u[0]
@@ -188,384 +190,143 @@ def energia_totale(p, n):
 	return energia_cinetica(p, n) + energia_potenziale(p, n) 
     
 
-def animate_triple_pendulum(f, output):
+def animate_pendulum(f, output, n_pend):
     global t
-    n_pend = 3
     t = 0
-    x1_plot = []
-    x2_plot = []
-    x3_plot = []
-    y1_plot = []
-    y2_plot = []
-    y3_plot = []
-    r1_plot = []
-    r2_plot = []
-    r3_plot = []
-    theta1_plot = []
-    theta2_plot = []
-    theta3_plot = []
+    fig = plt.figure()
+    position = {'polar':0, 'motion':1, 'energy_tot':2, 'energy_k_p':3}
 
     u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     um1 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     u = np.array([u0, um1])
+    theta, r = get_polar_coords(u0)
 
-    fig = plt.figure()
-    ax_pend = plt.subplot(221)
-    ax_polar = fig.add_subplot(222, projection='polar')
-    ax_en_tot = fig.add_subplot(223)
-    ax_en_k_p = fig.add_subplot(224)
-    #ax_lissajous = fig.add_subplot(225)
+    f_n = { 1: f_single, 2: f_double, 3: f_triple}
 
-    ax_pend.set_aspect('equal', adjustable='box')
-    ax_pend.axis('off')
-    ax_pend.set(xlim=(-(lengths[0]+lengths[1]+lengths[2])*1.2, (lengths[0]+lengths[1]+lengths[2])*1.2), ylim=(-(lengths[0]+lengths[1]+lengths[2])*1.2, (lengths[0]+lengths[1]+lengths[2])*1.2))
+# graphs 
+    axes_v = [fig.add_subplot(3, 3, 3,projection = 'polar'), fig.add_subplot(2, 2, 1),fig.add_subplot(3, 3, 6),fig.add_subplot(3, 3, 7)]
+# variables to plot
+    t_plot = []
+    en_tot = []
+    en_k = []
+    en_p = []
+    x_plot = [ [], [], [] ]
+    y_plot = [ [], [], [] ]
+    r_plot = [ [], [], [] ]
+    theta_plot = [ [], [], [] ]
 
+    axes_v[position['motion']].set_aspect('equal', adjustable='box')
+    axes_v[position['motion']].axis('off')
+    axes_v[position['motion']].set(xlim=(-(lengths[0]+lengths[1]+lengths[2])*1.2, (lengths[0]+lengths[1]+lengths[2])*1.2), ylim=(-(lengths[0]+lengths[1]+lengths[2])*1.2, (lengths[0]+lengths[1]+lengths[2])*1.2))
+
+    color_tails = {0: 'xkcd:lime', 1: 'xkcd:peach', 2: 'xkcd:sky blue'}
+    marker_face = {0: 'xkcd:bright green', 1: 'xkcd:salmon', 2: 'xkcd:azure'}
+    ax_pend_lines = [[], [], [], [], []]
+ 
+    axes_v[position['energy_tot']].set_title("Energia Tot")
+    axes_v[position['energy_k_p']].set_title("Energia Potenziale e Cinetica")
+
+    for p in range(n_pend):
 # lines from a mass to another
-    line1, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
-    line2, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
-    line3, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
-
+        ax_pend_lines[0].append(axes_v[position["motion"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
+    # different for so it is better from a visual point of view
+    for p in range(n_pend):
 # tail and points
-    line1_tail, = ax_pend.plot([], [], 'o-',color = 'xkcd:lime',markersize = 12, markerfacecolor = 'xkcd:bright green',linewidth=2, markevery=10000, markeredgecolor = 'k') 
-    line2_tail, = ax_pend.plot([], [], 'o-',color = 'xkcd:peach',markersize = 12, markerfacecolor = 'xkcd:salmon',linewidth=2, markevery=10000, markeredgecolor = 'k') 
-    line3_tail, =  ax_pend.plot([], [], 'o-',color = 'xkcd:azure',markersize = 12, markerfacecolor = 'xkcd:sky blue',linewidth=2, markevery=10000, markeredgecolor = 'k') 
-    time_text = ax_pend.text(0.02, 0.95, '', transform=ax_pend.transAxes)
-    energy_text = ax_pend.text(0.02, 0.90, '', transform=ax_pend.transAxes)
-    polar_line1_tail, = ax_polar.plot([thetas0[0]], [lengths[0]], 'o-',color = 'xkcd:lime',markersize = 2, markerfacecolor = 'xkcd:teal',linewidth=2, markevery=10000, markeredgecolor = 'k') 
-    polar_line2_tail, = ax_polar.plot([thetas0[1]], [lengths[1]], 'o-',color = 'xkcd:peach',markersize = 4, markerfacecolor = 'xkcd:salmon',linewidth=2, markevery=10000, markeredgecolor = 'k') 
-    polar_line3_tail, =  ax_polar.plot([thetas0[2]], [lengths[2]], 'o-',color = 'xkcd:azure',markersize = 3, markerfacecolor = 'xkcd:sky blue',linewidth=2, markevery=10000, markeredgecolor = 'k') 
+        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+        ax_pend_lines[2].append(axes_v[position['polar']].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+
+#    a = axes_v[position['energy_tot']].plot([],[] , 'o-',color = color_tails[2],markersize = 1, markerfacecolor = marker_face[2], linewidth=2, markeredgecolor = 'k', animated = True)[0] 
+    ax_pend_lines[3].append(axes_v[position["energy_k_p"]].plot([], [], color='k', animated = True)[0])    
+    ax_pend_lines[3].append(axes_v[position["energy_k_p"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
+    ax_pend_lines[4].append(axes_v[position["energy_tot"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
+
+    time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
+    time_text = axes_v[position['energy_tot']].text(0.02, 0.95, '', transform=axes_v[position['energy_tot']].transAxes)
+    energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+    energy_text = axes_v[position['energy_k_p']].text(0.02, 0.90, '', transform=axes_v[position['energy_k_p']].transAxes)
+
     # first plot then set otherwise it doesn't work
-    ax_polar.set_theta_zero_location("S")
-    ax_polar.set_rmax(sum(lengths))
-    ax_polar.legend([(polar_line1_tail, polar_line2_tail, polar_line3_tail)], ['1', '2', '3'])
-
-# graphs 
-    en_tot = [energia_totale(u0, n_pend)]
-    en_k = [energia_cinetica(u0, n_pend)]
-    en_p = [energia_potenziale(u0, n_pend)]
-    scatti_xy = [get_xy_coords(u0)]
-    theta, r = get_polar_coords(u0)
-    
+    axes_v[position['polar']].set_theta_zero_location("S")
+    axes_v[position['polar']].set_rmax(sum(lengths))
 
     fig.set_figheight(8)
     fig.set_figwidth(8)
      
     def init():
-        line1.set_data([], [])
-        line2.set_data([], [])
-        line3.set_data([], [])
-        line1_tail.set_data([], [])
-        line2_tail.set_data([], [])
-        line3_tail.set_data([], [])
-        polar_line1_tail.set_data([], [])
-        polar_line2_tail.set_data([], [])
-        polar_line3_tail.set_data([], [])
+        for p in range(n_pend):
+            ax_pend_lines[0][p].set_data([], [])
+            ax_pend_lines[1][p].set_data([], [])
+            ax_pend_lines[2][p].set_data([], [])
+
+        ax_pend_lines[3][0].set_data([], [])
+        ax_pend_lines[3][1].set_data([], [])
+        ax_pend_lines[4].set_data([], [])
+
         time_text.set_text('')
         energy_text.set_text('')
-        return line, time_text, energy_text
+        return ax_pend_lines[0]+ ax_pend_lines[1]+ ax_pend_lines[2] + ax_pend_lines[3] + ax_pend_lines[4] +[time_text, energy_text] 
+         
 
     def animate(i):
         global t
         nonlocal u
-        tail1 = 10
-        tail2 = 10
-        tail3 = 10
+        tails = [10, 10, 10]
         fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
         for x in range(fps_jump):
-            u = f(f_triple, u)
+            u = f(f_n[n_pend], u)
             t+=h
         u0 = u[0]
 
         x, y = get_xy_coords(u0)
-
-        x1_plot.append(x[0])
-        x2_plot.append(x[1])
-        x3_plot.append(x[2])
-        y1_plot.append(y[0])
-        y2_plot.append(y[1])
-        y3_plot.append(y[2])
-
         theta, r = get_polar_coords(u0)
-        theta1_plot.append(theta[0])
-        theta2_plot.append(theta[1])
-        theta3_plot.append(theta[2])
 
+        for k in range(n_pend):
+            x_plot[k].append(x[k])
+            y_plot[k].append(y[k])
+            r_plot[k].append(r[k])
+            theta_plot[k].append(theta[k])
 
-
-        r1_plot.append(r[0])
-        r2_plot.append(r[1])
-        r3_plot.append(r[2])
-
-        scatti_xy.append([x, y])
+        t_plot.append(t)
         en_tot.append(energia_totale(u0, n_pend))
         en_k.append(energia_cinetica(u0, n_pend))
         en_p.append(energia_potenziale(u0, n_pend))
 
+
         # line from the origin to the first mass
-        line1.set_data([0, x[0]], [0, y[0]])
-        # line from the first mass to the second mass
-        line2.set_data([x[0], x[1]], [y[0], y[1]])
-        # line from the second to the third mass
-        line3.set_data([x[1], x[2]], [y[1], y[2]])
-        line1_tail.set_data(x1_plot[i+1:max(1,i+1-tail1):-1], y1_plot[i+1:max(1,i+1-tail1):-1])
-        line2_tail.set_data(x2_plot[i+1:max(1,i+1-tail2):-1], y2_plot[i+1:max(1,i+1-tail2):-1])
-        line3_tail.set_data(x3_plot[i+1:max(1,i+1-tail3):-1], y3_plot[i+1:max(1,i+1-tail3):-1])
+        ax_pend_lines[0][0].set_data([0, x[0]], [0, y[0]])
+        #[i+1:max(1,i+1-tails[i]):-1]  
+        for j in range(1, n_pend):
+        # line from the i-1 mass to the i mass
+            ax_pend_lines[0][j].set_data([x[j-1], x[j]], [y[j-1], y[j]])
 
-        polar_line3_tail.set_data(theta3_plot[::-1], r3_plot[::-1])
-        polar_line2_tail.set_data(theta2_plot[::-1], r2_plot[::-1])
-        polar_line1_tail.set_data(theta1_plot[::-1], r1_plot[::-1])
-
+        ax_pend_lines[3][0].set_data(t_plot, en_k) 
+        ax_pend_lines[3][1].set_data(t_plot, en_p) 
+        ax_pend_lines[4][0].set_data([t_plot], [en_tot]) 
+        axes_v[2].clear()
+        axes_v[3].clear()
+        axes_v[2].plot(t_plot, en_k)
+        axes_v[2].plot(t_plot, en_p)
+        axes_v[3].plot(t_plot, en_tot)
+        ax_pend_lines[4][0].set_data([t_plot], [en_tot]) 
+        for j in range(n_pend):
+            ax_pend_lines[1][j].set_data(x_plot[j][i+1:max(1, i+1-tails[j]):-1], y_plot[j][i+1:max(1,i+1-tails[j]):-1])
+            ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
+    
         time_text.set_text('time = %.1f' % (t))
-        energy_text.set_text('energy = %.9f J' % en_tot[i+1])
+        energy_text.set_text('energy = %.9f J' % en_tot[i])
         
-        ax_en_tot.clear()
-        ax_en_k_p.clear()
-#        ax_polar.clear()
-#        ax_lissajous.clear()
-
-#        ax_polar.plot(theta1_plot, r1_plot)
-#        ax_polar.plot(theta2_plot, r2_plot)
-#        ax_polar.plot(theta3_plot, r3_plot)
-#        ax_lissajous.plot(theta1_plot, theta2_plot)
-
-        ax_en_tot.plot(en_tot, label='Energia Totale')
-        ax_en_k_p.plot(en_k, label='Energia Cinetica')
-        ax_en_k_p.plot(en_p, label='Energia Potenziale')
         print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing", end="\r") 
+        return (ax_pend_lines[0]+ ax_pend_lines[1]+ ax_pend_lines[2] + ax_pend_lines[3] + ax_pend_lines[4])
 
     
-    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit =False)
+    anim = animation.FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
     anim.save(output)
     print(" Done             ")
 #    plt.show()
     return anim
 
-def animate_double_pendulum(f, output):
-    global t
-    n_pend = 2
-    t = 0
-    x1_plot = []
-    x2_plot = []
-    y1_plot = []
-    y2_plot = []
-    r1_plot = []
-    r2_plot = []
-    theta1_plot = []
-    theta2_plot = []
-
-    u0 = np.array([thetas0[0], thetas0[1], 0, omegas0[0], omegas0[1], 0])
-    um1 = np.array([thetas0[0], thetas0[1], 0, omegas0[0], omegas0[1], 0])
-    u = np.array([u0, um1])
-
-    fig = plt.figure()
-    ax_pend = plt.subplot(221)
-#    ax_lissajous = fig.add_subplot(222)
-    ax_en_tot = fig.add_subplot(223)
-    ax_en_k_p = fig.add_subplot(224)
-    ax_polar = fig.add_subplot(222, projection='polar')
-    ax_polar.set_theta_offset(np.pi/2)
-
-    ax_pend.set_aspect('equal', adjustable='box')
-    ax_pend.axis('off')
-    ax_pend.set(xlim=(-(lengths[0]+lengths[1])*1.2, (lengths[0]+lengths[1])*1.2), ylim=(-(lengths[0]+lengths[1])*1.2, (lengths[0]+lengths[1])*1.2))
-
-# lines from a mass to another
-    line1, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
-    line2, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
-
-# tail and points
-    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k')  
-    line2_tail, = ax_pend.plot([], [], 'o-',color = '#ff3bd2',markersize = 12, markerfacecolor = '#f66338',linewidth=2, markevery=10000, markeredgecolor = 'k')  
-    time_text = ax_pend.text(0.02, 0.95, '', transform=ax_pend.transAxes)
-    energy_text = ax_pend.text(0.02, 0.90, '', transform=ax_pend.transAxes)
-
-# graphs 
-    en_tot = [energia_totale(u0, n_pend)]
-    en_k = [energia_cinetica(u0, n_pend)]
-    en_p = [energia_potenziale(u0, n_pend)]
-    scatti_xy = [get_xy_coords(u0)]
-    theta, r = get_polar_coords(u0)
-    
-
-    fig.set_figheight(8)
-    fig.set_figwidth(8)
-     
-    def init():
-        line1.set_data([], [])
-        line2.set_data([], [])
-        line1_tail.set_data([], [])
-        line2_tail.set_data([], [])
-        time_text.set_text('')
-        energy_text.set_text('')
-        return line1, time_text, energy_text
-
-    def animate(i):
-        global t
-        nonlocal u
-        tail1 = 10
-        tail2 = 10
-        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
-        for x in range(fps_jump):
-            u = f(f_double, u)
-            t+=h
-
-        u0 = u[0]
-        x, y = get_xy_coords(u0)
-
-        x1_plot.append(x[0])
-        x2_plot.append(x[1])
-        y1_plot.append(y[0])
-        y2_plot.append(y[1])
-
-        theta, r = get_polar_coords(u0)
-        theta1_plot.append(theta[0])
-        theta2_plot.append(theta[1])
-
-        r1_plot.append(r[0])
-        r2_plot.append(r[1])
-
-        scatti_xy.append([x, y])
-        en_tot.append(energia_totale(u0, n_pend))
-        en_k.append(energia_cinetica(u0, n_pend))
-        en_p.append(energia_potenziale(u0, n_pend))
-
-        # line from the origin to the first mass
-        line1.set_data([0, x[0]], [0, y[0]])
-        # line from the first mass to the second mass
-        line2.set_data([x[0], x[1]], [y[0], y[1]])
-        # line from the second to the third mass
-        line1_tail.set_data(x1_plot[i+1:max(1,i+1-tail1):-1], y1_plot[i+1:max(1,i+1-tail1):-1])
-        line2_tail.set_data(x2_plot[i+1:max(1,i+1-tail2):-1], y2_plot[i+1:max(1,i+1-tail2):-1])
-        time_text.set_text('time = %.1f' % (t))
-        energy_text.set_text('energy = %.9f J' % en_tot[i+1])
-        
-        ax_en_tot.clear()
-        ax_en_k_p.clear()
-        ax_polar.clear()
-#        ax_lissajous.clear()
-        ax_polar.set_theta_zero_location("S")
-
-        ax_polar.plot(theta1_plot, r1_plot)
-        ax_polar.plot(theta2_plot, r2_plot)
-
-#        ax_lissajous.plot(theta1_plot, theta2_plot)
-
-        ax_en_tot.plot(en_tot, label='Energia Totale')
-        ax_en_k_p.plot(en_k, label='Energia Cinetica')
-        ax_en_k_p.plot(en_p, label='Energia Potenziale')
-        print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing", end="\r") 
-
-    
-    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit =False)
-    anim.save(output)
-    print(" Done             ")
-#    plt.show()
-    return anim
-
-
-def animate_single_pendulum(f, output):
-    global t
-    n_pend = 1
-    t = 0
-    x1_plot = []
-    y1_plot = []
-    r1_plot = []
-    theta1_plot = []
-
-    u0 = np.array([thetas0[0], 0, 0, omegas0[0], 0, 0])
-    um1 = np.array([thetas0[0], 0, 0, omegas0[0], 0, 0])
-    u = np.array([u0, um1])
-
-    fig = plt.figure()
-    ax_pend = plt.subplot(221)
-    ax_polar = fig.add_subplot(222, projection='polar')
-    ax_polar.set_theta_offset(np.pi/2)
-    ax_en_tot = fig.add_subplot(223)
-    ax_en_k_p = fig.add_subplot(224)
-
-    ax_pend.set_aspect('equal', adjustable='box')
-    ax_pend.axis('off')
-    ax_pend.set(xlim=(-(lengths[0])*1.2, (lengths[0])*1.2), ylim=(-(lengths[0])*1.2, (lengths[0])*1.2))
-
-# lines from a mass to another
-    line1, = ax_pend.plot([], [], color='k', linestyle='-', linewidth=2)    
-
-# tail and points
-    line1_tail, = ax_pend.plot([], [], 'o-',color = '#d2eeff',markersize = 12, markerfacecolor = '#0077BE',linewidth=2, markevery=10000, markeredgecolor = 'k') 
-    time_text = ax_pend.text(0.02, 0.95, '', transform=ax_pend.transAxes)
-    energy_text = ax_pend.text(0.02, 0.90, '', transform=ax_pend.transAxes)
-
-# graphs 
-    en_tot = [energia_totale(u0, n_pend)]
-    en_k = [energia_cinetica(u0, n_pend)]
-    en_p = [energia_potenziale(u0, n_pend)]
-    scatti_xy = [get_xy_coords(u0)]
-    theta, r = get_polar_coords(u0)
-    
-
-    fig.set_figheight(8)
-    fig.set_figwidth(8)
-     
-    def init():
-        line1.set_data([], [])
-        line1_tail.set_data([], [])
-        time_text.set_text('')
-        energy_text.set_text('')
-        return line1, time_text, energy_text
-
-    def animate(i):
-        global t
-        nonlocal u
-        tail1 = 10
-        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
-        for x in range(fps_jump):
-            u = f(f_single, u)
-            t+=h
-        u0 = u[0]
-
-        x, y = get_xy_coords(u0)
-
-        x1_plot.append(x[0])
-        y1_plot.append(y[0])
-
-        theta, r = get_polar_coords(u0)
-        theta1_plot.append(theta[0])
-
-        r1_plot.append(r[0])
-
-        scatti_xy.append([x, y])
-        en_tot.append(energia_totale(u0, n_pend))
-        en_k.append(energia_cinetica(u0, n_pend))
-        en_p.append(energia_potenziale(u0, n_pend))
-
-        # line from the origin to the first mass
-        line1.set_data([0, x[0]], [0, y[0]])
-
-        line1_tail.set_data(x1_plot[i+1:max(1,i+1-tail1):-1], y1_plot[i+1:max(1,i+1-tail1):-1])
-        time_text.set_text('time = %.1f' % (t))
-        energy_text.set_text('energy = %.9f J' % en_tot[i+1])
-        
-        ax_en_tot.clear()
-        ax_en_k_p.clear()
-        ax_polar.clear()
-        ax_polar.set_theta_zero_location("S")
-
-        ax_polar.plot(theta1_plot, r1_plot)
-        ax_en_tot.plot(en_tot, label='Energia Totale')
-        ax_en_k_p.plot(en_k, label='Energia Cinetica')
-        ax_en_k_p.plot(en_p, label='Energia Potenziale')
-
-    
-    anim = FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit =False)
-    anim.save(output)
-    print(" Done             ")
-#    plt.show()
-    return anim
 
 #dati iniziali di default
-
-
-
 # condizioni iniziali
 # angolo iniziale in gradi
 #grad0_1, grad0_2, grad0_3 =  (135, 135, 135)
@@ -583,7 +344,7 @@ framepersec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
-f_anim_pendulum = {1:animate_single_pendulum, 2:animate_double_pendulum, 3:animate_triple_pendulum}
+#f_anim_pendulum = {animate_single_pendulum, 2:animate_double_pendulum, 3:animate_triple_pendulum}
 d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet}
 n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Implicit Verlet \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n")
 
@@ -654,10 +415,10 @@ elif y_n != "y" and y_n:
         exit()
 
 #f_int = [runge_kutta4, velocity_verlet, trapezoide_implicito, eulero_implicito, eulero_semi_implicito, eulero_esplicito, stormer_verlet] 
-f_pendulum = f_anim_pendulum[n_p]
 t_start = perf_counter()
-print(f"Running {f_int.__name__}...")
-f_pendulum(f_int, f"{f_int.__name__}_{n_pend_string[n_p]}.mp4")
+f_pendulum = animate_pendulum
+print(f"Running {n_pend_string[n_p]} pendulum with {f_int.__name__} propagation...")
+f_pendulum(f_int, f"{f_int.__name__}_{n_pend_string[n_p]}.mp4", n_p)
 t_end = perf_counter()
 #t_prec = 2
 print(f"Tempo di esecuzione: {t_end - t_start: .4}")
