@@ -225,6 +225,8 @@ def animate_pendulum(f, output, n_pend):
  
     axes_v[position['energy_tot']].set_title("Energia Tot")
     axes_v[position['energy_k_p']].set_title("Energia Potenziale e Cinetica")
+    axes_v[position['energy_tot']].set_xlim(0, tempo_simulazione)
+    axes_v[position['energy_k_p']].set_xlim(0, tempo_simulazione)
 
     for p in range(n_pend):
 # lines from a mass to another
@@ -236,9 +238,9 @@ def animate_pendulum(f, output, n_pend):
         ax_pend_lines[2].append(axes_v[position['polar']].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
 
 #    a = axes_v[position['energy_tot']].plot([],[] , 'o-',color = color_tails[2],markersize = 1, markerfacecolor = marker_face[2], linewidth=2, markeredgecolor = 'k', animated = True)[0] 
-    ax_pend_lines[3].append(axes_v[position["energy_k_p"]].plot([], [], color='k', animated = True)[0])    
-    ax_pend_lines[3].append(axes_v[position["energy_k_p"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
-    ax_pend_lines[4].append(axes_v[position["energy_tot"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
+    ax_pend_lines[3].append(axes_v[position["energy_k_p"]].plot([], [], 'o-',color = color_tails[0],markersize = 1, markerfacecolor = marker_face[0],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
+    ax_pend_lines[3].append(axes_v[position["energy_k_p"]].plot([], [], 'o-',color = color_tails[0],markersize = 1, markerfacecolor = marker_face[0],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
+    ax_pend_lines[4].append(axes_v[position["energy_tot"]].plot([], [], 'o-',color = color_tails[0],markersize = 1, markerfacecolor = marker_face[0],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
 
     time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
     time_text = axes_v[position['energy_tot']].text(0.02, 0.95, '', transform=axes_v[position['energy_tot']].transAxes)
@@ -258,9 +260,9 @@ def animate_pendulum(f, output, n_pend):
             ax_pend_lines[1][p].set_data([], [])
             ax_pend_lines[2][p].set_data([], [])
 
-        ax_pend_lines[3][0].set_data([], [])
-        ax_pend_lines[3][1].set_data([], [])
-        ax_pend_lines[4].set_data([], [])
+#        ax_pend_lines[3][0].set_data([], [])
+#        ax_pend_lines[3][1].set_data([], [])
+#        ax_pend_lines[4].set_data([], [])
 
         time_text.set_text('')
         energy_text.set_text('')
@@ -301,13 +303,13 @@ def animate_pendulum(f, output, n_pend):
 
         ax_pend_lines[3][0].set_data(t_plot, en_k) 
         ax_pend_lines[3][1].set_data(t_plot, en_p) 
-        ax_pend_lines[4][0].set_data([t_plot], [en_tot]) 
-        axes_v[2].clear()
-        axes_v[3].clear()
-        axes_v[2].plot(t_plot, en_k)
-        axes_v[2].plot(t_plot, en_p)
-        axes_v[3].plot(t_plot, en_tot)
-        ax_pend_lines[4][0].set_data([t_plot], [en_tot]) 
+        ax_pend_lines[4][0].set_data(t_plot, en_tot) 
+#        axes_v[2].clear()
+#        axes_v[3].clear()
+#        axes_v[2].plot(t_plot, en_k)
+#        axes_v[2].plot(t_plot, en_p)
+#        axes_v[3].plot(t_plot, en_tot)
+        ax_pend_lines[4][0].set_data(t_plot, en_tot) 
         for j in range(n_pend):
             ax_pend_lines[1][j].set_data(x_plot[j][i+1:max(1, i+1-tails[j]):-1], y_plot[j][i+1:max(1,i+1-tails[j]):-1])
             ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
@@ -319,7 +321,7 @@ def animate_pendulum(f, output, n_pend):
         return (ax_pend_lines[0]+ ax_pend_lines[1]+ ax_pend_lines[2] + ax_pend_lines[3] + ax_pend_lines[4])
 
     
-    anim = animation.FuncAnimation(fig, func = animate, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
     anim.save(output)
     print(" Done             ")
 #    plt.show()
