@@ -5,6 +5,7 @@ import copy
 from  time import perf_counter
 #from matplotlib.animation import FuncAnimation
 import matplotlib.animation as animation
+from matplotlib import collections
 
 def stormer_verlet(f, u):
     u0 = u[0]
@@ -144,15 +145,15 @@ def f_single( u , t):
 
 
 def get_xy_coords(q):
-	x1 = lengths[0]*np.sin(q[0])
-	x2 = lengths[1]*np.sin(q[1]) + x1
-	x3 = lengths[2] * np.sin(q[2]) + x2
-	y1 = -lengths[0]*np.cos(q[0]) 
-	y2 = -lengths[1]*np.cos(q[1]) + y1 
-	y3 = -lengths[2] * np.cos(q[2]) + y2
-	x = (x1, x2, x3)
-	y = (y1, y2, y3)
-	return x, y 
+    x1 = lengths[0]*np.sin(q[0])
+    x2 = lengths[1]*np.sin(q[1]) + x1
+    x3 = lengths[2] * np.sin(q[2]) + x2
+    y1 = -lengths[0]*np.cos(q[0]) 
+    y2 = -lengths[1]*np.cos(q[1]) + y1 
+    y3 = -lengths[2] * np.cos(q[2]) + y2
+    x = (x1, x2, x3)
+    y = (y1, y2, y3)
+    return x, y 
 
 def get_polar_coords(p):
 	x, y = get_xy_coords(p)
@@ -189,12 +190,121 @@ def energia_potenziale(p, n):
 def energia_totale(p, n):
 	return energia_cinetica(p, n) + energia_potenziale(p, n) 
     
+def xy_to_line(x, y, n, n_pend):
+    list_line = np.zeros((n, n_pend, 2))
+    for j in range(n):
+        for i in range(n_pend):
+            list_line[j][i][0] = x[j][i]
+            list_line[j][i][1] = y[j][i]
+    return list_line 
 
-def animate_pendulum(f, output, n_pend):
+def xy_to_segment(x, y, n, n_pend):
+    segments = np.zeros((n_pend, (n+1), 2))
+    for i in range(n_pend):
+        segments[i][0][0] = 0
+        segments[i][0][1] = 0
+        
+    for j in range(n):
+        for i in range(n_pend):
+            segments[i][j+1][0] = x[j][i]
+            segments[i][j+1][1] = y[j][i]
+    return segments
+
+
+def butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
+    global t, lengths, masses
+    t = 0
+    # mode 0 : thetas mode 1: omegas  mode 2: 
+    u0_pend = np.empty((n_pend, 6))
+    um1_pend = np.empty((n_pend, 6))
+    perturbation_th_omega = np.zeros(6)
+    perturbation_masses = np.zeros(3)
+    perturbation_lengths = np.zeros(3)
+
+    if n_mode == 1:
+        perturbation_th_omega[0:3] += perturbation
+    elif n_mode == 2:
+        perturbation_th_omega[3:6] += perturbation
+    elif n_mode == 3:
+        perturbation_masses =  np.array([perturbation*1 , 0, 0]) 
+    elif n_mode == 4:
+        perturbation_lengths += perturbation
+         
+    u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
+    um1 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
+    segments = np.zeros((n_pend, (n+1), 2))
+    for i in range(n_pend):
+        u0_pend[i] = u0 + perturbation_th_omega*i
+        um1_pend[i] = u0 + perturbation_th_omega*i
+
+# temporary fix for lengths TO CHANGE
+    lengths_rapp = np.zeros(n_pend)
+    for i in range(n_pend):
+        lengths_rapp[i] = (lengths[0]+i*perturbation_lengths[0])/lengths[0]
+
+        
+    f_n = { 1: f_single, 2: f_double, 3: f_triple}
+
+    # for graphing
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.axis('off')
+    l_max = np.sum((lengths*1.2 + n_pend*perturbation_lengths) [0:n:1])
+    ax.set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
+
+    points, = plt.plot([], [],'ok', lw = '1')
+    p_segments = np.zeros((n_pend, 0, 2))
+    color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
+    pends = collections.LineCollection(p_segments, color = color_lines)
+    ax.add_collection(pends)
+
+    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+
+    def init():
+        pends.set_segments(np.zeros((n_pend, 0, 2)))
+        points.set_data([], [])
+        time_text.set_text('')
+        return pends, points, time_text
+
+    def animate(i):
+        global t, lengths, masses
+        nonlocal u0_pend, um1_pend
+        position = np.zeros((n, 2, n_pend))
+        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
+        for x in range(fps_jump):
+            for o in range(n_pend):
+                (u0_pend[o], um1_pend[o]) = f(f_n[n], [u0_pend[o], um1_pend[o]])
+                lengths += perturbation_lengths
+                masses  += perturbation_masses
+            t+=h
+            masses  -= perturbation_masses*n_pend
+            lengths -= perturbation_lengths*n_pend
+
+        x_pend, y_pend = get_xy_coords(u0_pend[:,:3].T)*lengths_rapp
+        p_segments = xy_to_segment(x_pend, y_pend, n, n_pend)
+        lines = xy_to_line(x_pend, y_pend, n, n_pend)
+        pends.set_segments(p_segments)
+        time_text.set_text('time = %.1f' % (t))
+        
+        x_point, y_point = lines.reshape(-1, 2).T
+        points.set_data(x_point, y_point)
+        print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing", end="\r") 
+        return pends, points, time_text
+
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
+    anim.save(output)
+    print(" Done             ")
+    #    plt.show()
+    return anim
+
+
+   
+
+
+def animate_pendulum(f, output, n):
     global t
     t = 0
     fig = plt.figure()
-    position = {'polar':0, 'motion':1, 'energy_tot':2, 'energy_k_p':3}
+    position = { 'motion':0, 'polar':1, 'energy_tot':2, 'energy_k_p':3, 'position': 4 }
 
     u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     um1 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
@@ -228,11 +338,11 @@ def animate_pendulum(f, output, n_pend):
     axes_v[position['energy_tot']].set_xlim(0, tempo_simulazione)
     axes_v[position['energy_k_p']].set_xlim(0, tempo_simulazione)
 
-    for p in range(n_pend):
+    for p in range(n):
 # lines from a mass to another
         ax_pend_lines[0].append(axes_v[position["motion"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
     # different for so it is better from a visual point of view
-    for p in range(n_pend):
+    for p in range(n):
 # tail and points
         ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
         ax_pend_lines[2].append(axes_v[position['polar']].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
@@ -255,7 +365,7 @@ def animate_pendulum(f, output, n_pend):
     fig.set_figwidth(8)
      
     def init():
-        for p in range(n_pend):
+        for p in range(n):
             ax_pend_lines[0][p].set_data([], [])
             ax_pend_lines[1][p].set_data([], [])
             ax_pend_lines[2][p].set_data([], [])
@@ -275,42 +385,42 @@ def animate_pendulum(f, output, n_pend):
         tails = [10, 10, 10]
         fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
         for x in range(fps_jump):
-            u = f(f_n[n_pend], u)
+            u = f(f_n[n], u)
             t+=h
         u0 = u[0]
 
         x, y = get_xy_coords(u0)
         theta, r = get_polar_coords(u0)
 
-        for k in range(n_pend):
+        for k in range(n):
             x_plot[k].append(x[k])
             y_plot[k].append(y[k])
             r_plot[k].append(r[k])
             theta_plot[k].append(theta[k])
 
         t_plot.append(t)
-        en_tot.append(energia_totale(u0, n_pend))
-        en_k.append(energia_cinetica(u0, n_pend))
-        en_p.append(energia_potenziale(u0, n_pend))
+        en_tot.append(energia_totale(u0, n))
+        en_k.append(energia_cinetica(u0, n))
+        en_p.append(energia_potenziale(u0, n))
 
 
         # line from the origin to the first mass
         ax_pend_lines[0][0].set_data([0, x[0]], [0, y[0]])
         #[i+1:max(1,i+1-tails[i]):-1]  
-        for j in range(1, n_pend):
+        for j in range(1, n):
         # line from the i-1 mass to the i mass
             ax_pend_lines[0][j].set_data([x[j-1], x[j]], [y[j-1], y[j]])
 
         ax_pend_lines[3][0].set_data(t_plot, en_k) 
         ax_pend_lines[3][1].set_data(t_plot, en_p) 
         ax_pend_lines[4][0].set_data(t_plot, en_tot) 
-#        axes_v[2].clear()
-#        axes_v[3].clear()
-#        axes_v[2].plot(t_plot, en_k)
-#        axes_v[2].plot(t_plot, en_p)
-#        axes_v[3].plot(t_plot, en_tot)
+        axes_v[2].clear()
+        axes_v[3].clear()
+        axes_v[2].plot(t_plot, en_k)
+        axes_v[2].plot(t_plot, en_p)
+        axes_v[3].plot(t_plot, en_tot)
         ax_pend_lines[4][0].set_data(t_plot, en_tot) 
-        for j in range(n_pend):
+        for j in range(n):
             ax_pend_lines[1][j].set_data(x_plot[j][i+1:max(1, i+1-tails[j]):-1], y_plot[j][i+1:max(1,i+1-tails[j]):-1])
             ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
     
@@ -333,8 +443,8 @@ def animate_pendulum(f, output, n_pend):
 # angolo iniziale in gradi
 #grad0_1, grad0_2, grad0_3 =  (135, 135, 135)
 #thetas0  =  (grad0_1*2*np.pi / 360 ,grad0_2*2*np.pi / 360 ,grad0_3*2*np.pi / 360)
-lengths  = [1., 1., 1.]
-masses   = [1., 1., 1.]
+lengths  = np.array([1., 1., 1.])
+masses   = np.array([1., 1., 1.])
 grads0 = np.array([135, 135, 135])
 thetas0 = grads0 * 2 * np.pi /360
 omegas0_grad = np.zeros(3)
@@ -357,7 +467,7 @@ n_p = 3
 
 y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = {grads0}grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {framepersec}s**-1 \n   time simulation = {tempo_simulazione}s \n   g = {g}m/s**2 \n").lower()
 if (y_n == "n"):
-    n_p = (input("n pendula to simulate? [1, 2, [3]]   "))
+    n_p = (input("n pendula to simulate? [1, 2, [3]] \n"))
     if( n_p in ["1", "2", "3"]):
         n_p = int(n_p) 
     elif (not n_p): n_p = 3
@@ -365,22 +475,22 @@ if (y_n == "n"):
 
     for i in range(n_p):
         print(f"Pend n. {i+1} :")
-        l = input(f" Lenght [{lengths[i]}] m:   ")
+        l = input(f" Length [{lengths[i]}] m: \n  ")
         if (l.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): lengths[i] = float(l)
         elif (l): 
             print("Input non valido.")
             exit()
-        m = input(f" Mass [{masses[i]}] Kg:   ")
+        m = input(f" Mass [{masses[i]}] Kg: \n  ")
         if (m.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): masses[i] = float(m)
         elif (m): 
             print("Input non valido.")
             exit()
-        theta = input(f" Initial theta [{grads0[i]}] Grad:   ")
+        theta = input(f" Initial theta [{grads0[i]}] Grad:  \n  ")
         if (theta.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): thetas0[i] =  float(theta)*2*np.pi / 360 
         elif (theta): 
             print("Input non valido.")
             exit()
-        omega = input(f" Initial omega [{omegas0_grad[i]}] Grad/s:   ")
+        omega = input(f" Initial omega [{omegas0_grad[i]}] Grad/s:  \n  ")
         if (omega.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): omegas0[i] = float(omega)*2*np.pi / 360
         elif (omega): 
             print("Input non valido.")
@@ -388,25 +498,25 @@ if (y_n == "n"):
         print()
 
 
-    gravity = input(f"Gravity [{g}] m/s**2 :   ")
+    gravity = input(f"Gravity [{g}] m/s**2 :\n")
     if (gravity.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): g = float(gravity)
     elif (gravity): 
         print("Input non valido.")
         exit()
 
-    step = input(f"Default time steps [{h}] s :   ")
+    step = input(f"Default time steps [{h}] s :\n")
     if (step.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): h = float(step)
     elif (step): 
         print("Input non valido.")
         exit()
 
-    time = input(f"Time simulation [{tempo_simulazione}] s :   ")
+    time = input(f"Time simulation [{tempo_simulazione}] s :\n")
     if (time.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): tempo_simulazione = float(time)
     elif (time): 
         print("Input non valido.")
         exit()
 
-    fps = input(f"Fps [{framepersec}] :   ")
+    fps = input(f"Fps [{framepersec}] :  \n")
     if (fps.isdigit()): framepersec = int(fps)
     elif (fps): 
         print("Input non valido.")
@@ -417,10 +527,30 @@ elif y_n != "y" and y_n:
         exit()
 
 #f_int = [runge_kutta4, velocity_verlet, trapezoide_implicito, eulero_implicito, eulero_semi_implicito, eulero_esplicito, stormer_verlet] 
+dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 0: "nothing"}
+perturb = 1e-4
+n_pend = 40
 t_start = perf_counter()
-f_pendulum = animate_pendulum
+mode = input("Select Mode: \n  [1] Single \n   2 The Butterfly Effect \n")
+if mode == "1" or not mode: 
+    animate_pendulum(f_int, f"{animate_pendulum.__name__}{f_int.__name__}_{n_pend_string[n_p]}.mp4", n_p)
+    f_pendulum = animate_pendulum
+elif mode == "2": 
+
+    n_mode =  input("What to perturb?\n  [1] Angles 4 \n   2 Angular Velocities \n   3 Masses \n   4 Lengths \n   0 Nothing")
+    if (n_mode.lstrip('-').isdigit()): n_mode = int(n_mode)
+    elif (not n_mode): n_mode = 1
+    else: 
+        print("Input non valido.")
+        exit()
+
+    s_perturb = input("Module of perturbation? [grad | grad/s | Kg | m]\n ")
+    if (s_perturb.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): perturb = float(s_perturb)
+    elif (s_perturb): 
+        print("Input non valido.")
+        exit()
+    butterfly_effect(f_int, f"{butterfly_effect.__name__}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}_{n_pend_string[n_p]}.mp4", n_p, n_pend, perturb, n_mode)
 print(f"Running {n_pend_string[n_p]} pendulum with {f_int.__name__} propagation...")
-f_pendulum(f_int, f"{f_int.__name__}_{n_pend_string[n_p]}.mp4", n_p)
 t_end = perf_counter()
 #t_prec = 2
 print(f"Tempo di esecuzione: {t_end - t_start: .4}")
