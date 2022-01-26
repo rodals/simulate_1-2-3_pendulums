@@ -261,8 +261,10 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
 
     points, = plt.plot([], [],'ok', lw = '1')
     p_segments = np.zeros((n_pend, 0, 2))
+    track_segments = np.zeros((n_pend, 0, 2))
     color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
     pends = collections.LineCollection(p_segments, color = color_lines)
+    track_pends = collections.LineCollection(track_segments, color = color_lines)
     ax.add_collection(pends)
 
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
@@ -465,7 +467,8 @@ def animate_pendulum_detailed(f, output, n):
 # lines from a mass to another
         ax_pend_lines[0].append(axes_v[position["motion"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
     # draw only the last line of the pendulum
-    complete_motion = axes_v[position["complete_motion"]].plot([], [], marker = 'o', color = color_tails[n-1],markersize = 8, markerfacecolor = marker_face[n-1], ls="",  markevery=1, markeredgecolor = 'k', animated = True)[0]
+    complete_motion = axes_v[position["complete_motion"]].plot([], [], 'o-', color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1], lw=2,  markevery=1, markeredgecolor = 'k', animated = True)[0]
+    complete_motion_point = axes_v[position["complete_motion"]].plot([], [], 'o', color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1], markevery=1, markeredgecolor = 'k', animated = True)[0]
 #    complete_motion = axes_v[position["complete_motion"]].scatter([], [], 'o-', color = color_tails[n-1],markersize = 8, markerfacecolor = marker_face[n-1], linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0]
 # different for so it is better from a visual point of view
     for p in range(n):
@@ -476,7 +479,7 @@ def animate_pendulum_detailed(f, output, n):
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{k}$',color = 'blue',markersize = 4, markerfacecolor = 'blue',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{p}$',color = 'orange',markersize = 4, markerfacecolor = 'orange', linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 4, markerfacecolor = 'red',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
-    energy.append(axes_v[position["energy_tot"]].plot([], [], 'o',label = r'$E_{tot}$',color = 'k',markersize = 3, markerfacecolor = 'k',linewidth=2, markevery=1, markeredgecolor = 'xkcd:red', animated = True)[0])    
+    energy.append(axes_v[position["energy_tot"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 5, markerfacecolor = 'red',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])    
 
     for j in range(n):
         energy.append(axes_v[position["energy_points"]].plot([], [], 'o-',label = f'$E_{{{j+1}}}$',color = color_tails[j],markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
@@ -565,6 +568,7 @@ def animate_pendulum_detailed(f, output, n):
             ax_pend_lines[0][p].set_data([], [])
             ax_pend_lines[1][p].set_data([], [])
         complete_motion.set_data([], [])
+        complete_motion_point.set_data([], [])
 
         for p in range(4):
             energy[p].set_data([], [])
@@ -634,6 +638,7 @@ def animate_pendulum_detailed(f, output, n):
             ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
 
         complete_motion.set_data(x_plot[j], y_plot[j])
+        complete_motion_point.set_data(x[n-1], y[n-1])
 
         energy[0].set_data(t_plot[::-1], en_k[::-1])
         energy[1].set_data(t_plot[::-1], en_p[::-1])
