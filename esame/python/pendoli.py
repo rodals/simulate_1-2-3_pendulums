@@ -227,6 +227,9 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     perturbation_th_omega = np.zeros(6)
     perturbation_masses = np.zeros(3)
     perturbation_lengths = np.zeros(3)
+    frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h))
+    track_segments_plot = np.zeros((n_pend, frames, 2))
+#    y_plots = np.zeros((n_pend, frames))
 
     if n_mode == 1:
         perturbation_th_omega[0:3] += perturbation
@@ -240,6 +243,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     um1= np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     segments = np.zeros((n_pend, (n+1), 2))
+
     
 
     for i in range(n_pend):
@@ -264,16 +268,18 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     track_segments = np.zeros((n_pend, 0, 2))
     color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
     pends = collections.LineCollection(p_segments, color = color_lines)
-    track_pends = collections.LineCollection(track_segments, color = color_lines)
+    track_pends = collections.LineCollection(track_segments, colors = color_lines)
+    ax.add_collection(track_pends)
     ax.add_collection(pends)
-
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 
     def init():
         pends.set_segments(np.zeros((n_pend, 0, 2)))
+        track_pends.set_segments(np.zeros((n_pend, 0, 2)))
         points.set_data([], [])
         time_text.set_text('')
-        return pends, points, time_text
+
+        return pends, points, track_pends, time_text
 
     def animate(i):
         global t, lengths, masses
@@ -291,15 +297,18 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
             lengths -= perturbation_lengths*n_pend
 
         x_pend, y_pend = get_xy_coords(u0_pend[:,:3].T)*lengths_rapp
+        track_segments_plot[0:n_pend:1][:,i][:,0] = x_pend[n-1] 
+        track_segments_plot[0:n_pend:1][:,i][:,1] = y_pend[n-1]
         p_segments = xy_to_segment(x_pend, y_pend, n, n_pend)
         lines = xy_to_line(x_pend, y_pend, n, n_pend)
         pends.set_segments(p_segments)
+#        print(track_segments_plot[:, 0:i])
+        track_pends.set_segments(track_segments_plot[:, 0:i])
         time_text.set_text('Time = %.1f' % (t))
-        
         x_point, y_point = lines.reshape(-1, 2).T
         points.set_data(x_point, y_point)
         percentage(i)
-        return pends, points, time_text
+        return pends, points, track_pends, time_text
 
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
     anim.save(output)
