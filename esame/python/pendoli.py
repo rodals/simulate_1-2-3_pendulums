@@ -303,7 +303,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         lines = xy_to_line(x_pend, y_pend, n, n_pend)
         pends.set_segments(p_segments)
 #        print(track_segments_plot[:, 0:i])
-        track_pends.set_segments(track_segments_plot[:, 0:i])
+        track_pends.set_segments(track_segments_plot[:, 0:i+1])
         time_text.set_text('Time = %.1f' % (t))
         x_point, y_point = lines.reshape(-1, 2).T
         points.set_data(x_point, y_point)
