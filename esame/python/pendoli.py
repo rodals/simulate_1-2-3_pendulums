@@ -4,7 +4,6 @@ import matplotlib
 import numpy as np
 import copy
 from  time import perf_counter
-#from matplotlib.animation import FuncAnimation
 import matplotlib.animation as animation
 from matplotlib import collections
 
@@ -45,9 +44,7 @@ def velocity_verlet(f, u):
     diff = [2*s, 2*s, 2*s]
     u0 = u[0]
     y_1 = np.zeros(6)
-    # "y_0" prima stima
     y_1[0:3] = u0[0:3] + u0[3:6]*h  + f(u0, t)[3:6]*h*h/2 
-    # "y_0" prima stima
     y_1[3:6] = u0[3:6] + f(u0, t)[3:6]*h/2
     add = np.zeros(6)
     while (np.abs(diff[0]) > s or np.abs(diff[1]) > s or np.abs(diff[2]) > s):
@@ -229,7 +226,6 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     perturbation_lengths = np.zeros(3)
     frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h))
     track_segments_plot = np.zeros((n_pend, frames, 2))
-#    y_plots = np.zeros((n_pend, frames))
 
     if n_mode == 1:
         perturbation_th_omega[0:3] += perturbation
@@ -267,7 +263,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     p_segments = np.zeros((n_pend, 0, 2))
     track_segments = np.zeros((n_pend, 0, 2))
     color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
-    pends = collections.LineCollection(p_segments, color = color_lines)
+    pends = collections.LineCollection(p_segments, color = 'black')
     track_pends = collections.LineCollection(track_segments, colors = color_lines)
     ax.add_collection(track_pends)
     ax.add_collection(pends)
@@ -302,7 +298,6 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         p_segments = xy_to_segment(x_pend, y_pend, n, n_pend)
         lines = xy_to_line(x_pend, y_pend, n, n_pend)
         pends.set_segments(p_segments)
-#        print(track_segments_plot[:, 0:i])
         track_pends.set_segments(track_segments_plot[:, 0:i+1])
         time_text.set_text('Time = %.1f' % (t))
         x_point, y_point = lines.reshape(-1, 2).T
@@ -313,7 +308,6 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
     anim.save(output)
     print(" Done             ")
-    #    plt.show()
     return anim
 
 def animate_pendulum_simple(f, output, n):
@@ -394,13 +388,11 @@ def animate_pendulum_simple(f, output, n):
 
         # line from the origin to the first mass
         ax_pend_lines[0][0].set_data([0, x[0]], [0, y[0]])
-        #[i+1:max(1,i+1-tails[i]):-1]  
         for j in range(1, n):
         # line from the i-1 mass to the i mass
             ax_pend_lines[0][j].set_data([x[j-1], x[j]], [y[j-1], y[j]])
             ax_pend_lines[1][j-1].set_data(x_plot[j-1][i], y_plot[j-1][i])
 
-   #     ax_pend_lines[1][n-1].set_data(x_plot[n-1][i+1:0:-1], y_plot[n-1][i+1:0:-1])
         ax_pend_lines[1][n-1].set_data(x_plot[n-1][max(0, i-tail):i+1], y_plot[n-1][max(0,i-tail):i+1])
         ax_pend_lines[1][n].set_data(x_plot[n-1][i], y_plot[n-1][i])
     
@@ -478,7 +470,6 @@ def animate_pendulum_detailed(f, output, n):
     # draw only the last line of the pendulum
     complete_motion = axes_v[position["complete_motion"]].plot([], [], 'o-', color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1], lw=2,  markevery=1, markeredgecolor = 'k', animated = True)[0]
     complete_motion_point = axes_v[position["complete_motion"]].plot([], [], 'o', color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1], markevery=1, markeredgecolor = 'k', animated = True)[0]
-#    complete_motion = axes_v[position["complete_motion"]].scatter([], [], 'o-', color = color_tails[n-1],markersize = 8, markerfacecolor = marker_face[n-1], linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0]
 # different for so it is better from a visual point of view
     for p in range(n):
 # tail and points
@@ -488,13 +479,12 @@ def animate_pendulum_detailed(f, output, n):
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{k}$',color = 'blue',markersize = 4, markerfacecolor = 'blue',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{p}$',color = 'orange',markersize = 4, markerfacecolor = 'orange', linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 4, markerfacecolor = 'red',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
-    energy.append(axes_v[position["energy_tot"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 5, markerfacecolor = 'red',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])    
+    energy.append(axes_v[position["energy_tot"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 2, markerfacecolor = 'red',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])    
 
     for j in range(n):
         energy.append(axes_v[position["energy_points"]].plot([], [], 'o-',label = f'$E_{{{j+1}}}$',color = color_tails[j],markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
         pos_x.append(axes_v[position['position_x']].plot([], [], 'o-', label = f'Posizione x{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j], linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
         pos_y.append(axes_v[position['position_y']].plot([], [], 'o-',  label = f'Position y{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
-#        phase_x.append(axes_v[position['phase_x']].plot([], [], 'o-', label = f'Phase x{j+1} vs v{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
         string_theta = "\theta"
         string_dot_theta = "\dot{\theta}"
         phase.append(axes_v[position['phase']].plot([], [], 'o-', label = f'Phase ${string_theta}_{{{j+1}}}$ vs ${string_dot_theta}_{{{j+1}}}$', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
@@ -504,22 +494,16 @@ def animate_pendulum_detailed(f, output, n):
 
     axes_v[position['motion']].set_aspect('equal', adjustable='box')
     axes_v[position['motion']].axis('off')
-    axes_v[position['motion']].set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
-#    axes_v[position['phase_x']].set_xlim(-l_max, l_max)
-#    axes_v[position['phase_y']].set_ylim(-l_max, l_max)
-#    axes_v[position['position_y']].set_ylim(-l_max, l_max)
-#    axes_v[position['position_x']].set_xlim(-l_max, l_max)
-#    axes_v[position['position_x']].set_aspect('equal', adjustable='box')
-#    axes_v[position['phase_x']].sharex(axes_v[position['motion']])
-#    axes_v[position['phase_y']].sharey(axes_v[position['motion']])
-    axes_v[position['position_x']].sharex(axes_v[position['motion']])
-    axes_v[position['position_y']].sharey(axes_v[position['motion']])
+    axes_v[position['motion']].set(xlim=(-l_max*1.2, l_max*1.2), ylim=(-l_max*1.2, l_max*1.2))
+
+    axes_v[position['complete_motion']].set_title(r"Lissajous curve (last pendulum)")
     axes_v[position['complete_motion']].set_aspect('equal', adjustable='box')
     axes_v[position['complete_motion']].sharex(axes_v[position['motion']])
     axes_v[position['complete_motion']].sharey(axes_v[position['motion']])
-#    axes_v[position['phase_x']].set_aspect('equal', adjustable='box')
-#    axes_v[position['phase_y']].set_aspect('equal', adjustable='box')
+    axes_v[position['complete_motion']].xaxis.tick_top()
+    axes_v[position['complete_motion']].xaxis.set_label_position("top")
 
+    axes_v[position['position_x']].sharex(axes_v[position['motion']])
     axes_v[position['position_x']].set_title(r"$x$ vs $t$")
     axes_v[position['position_x']].xaxis.tick_top()
     axes_v[position['position_x']].xaxis.set_label_position("top")
@@ -527,6 +511,7 @@ def animate_pendulum_detailed(f, output, n):
     axes_v[position['position_x']].set_ylabel(r"$t (s)$")
     axes_v[position['position_x']].set_ylim(0, tempo_simulazione)
 
+    axes_v[position['position_y']].sharey(axes_v[position['motion']])
     axes_v[position['position_y']].set_title(r"$t (s)$ vs $y (m)$")
     axes_v[position['position_y']].set_xlabel(r"$t (s)$")
     axes_v[position['position_y']].set_ylabel(r"$y (m)$")
@@ -539,19 +524,12 @@ def animate_pendulum_detailed(f, output, n):
     axes_v[position['phase']].set_ylabel(r"$\dot{\theta} (rad/s)$")
     axes_v[position['phase']].set_xlim(-np.pi, np.pi)
 
-#    axes_v[position['phase_y']].set_title(r"$v_y$ vs $y$")
-#    axes_v[position['phase_y']].set_xlabel(r"$v_y (m/s)$")
-#    axes_v[position['phase_y']].set_ylabel(r"$y (m)$")
-#    axes_v[position['phase_y']].xaxis.tick_top()
-#    axes_v[position['phase_y']].xaxis.set_label_position("top")
-#    axes_v[position['phase_y']].yaxis.tick_right()
-#    axes_v[position['phase_y']].yaxis.set_label_position("right")
-
     axes_v[position['polar']].set_theta_zero_location("S")
     axes_v[position['polar']].set_rmax(sum(lengths))
 
     axes_v[position['energy_points']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_points']].set_xlabel(r"$t (s)$")
+    axes_v[position['energy_points']].yaxis.tick_right()
     axes_v[position['energy_points']].legend()
 
     axes_v[position['energy_tot']].set_title("Total Energy", pad=20)
@@ -560,6 +538,7 @@ def animate_pendulum_detailed(f, output, n):
     axes_v[position['energy_tot']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_tot']].yaxis.tick_right()
     axes_v[position['energy_tot']].yaxis.set_label_position("right")
+    axes_v[position['energy_tot']].legend()
 
     axes_v[position['energy_k_p']].set_title(r"$E_k$,  $E_p$, $E_{tot}$")
     axes_v[position['energy_k_p']].set_xlim(0, tempo_simulazione)
@@ -622,27 +601,10 @@ def animate_pendulum_detailed(f, output, n):
 # line from the i-1 mass to the i mass
             ax_pend_lines[0][j].set_data([x[j-1], x[j]], [y[j-1], y[j]])
 
-#        axes_v[position['energy_k_p']].clear()
-#        axes_v[position['energy_tot']].clear()
-#        axes_v[position['position_x']].clear()
-#        axes_v[position['position_y']].clear()
-#        axes_v[position['phase_x']].clear()
-#        axes_v[position['phase_y']].clear()
-
-#        axes_v[position['energy_k_p']].plot(t_plot, en_k)
-#        axes_v[position['energy_k_p']].plot(t_plot, en_p)
-#        axes_v[position['energy_tot']].plot(t_plot, en_tot)
-
-
         for j in range(n):
-#            axes_v[position['position_x']].plot(x_plot[j], t_plot, label = f'Posizione x{j+1}', color = color_tails[j])
-#            axes_v[position['position_y']].plot(t_plot, y_plot[j], label = f'Position y{j+1}', color = color_tails[j])
             pos_x[j].set_data(x_plot[j][::-1], t_plot[::-1])
             pos_y[j].set_data(t_plot[::-1], y_plot[j][::-1])
             phase[j].set_data(theta_plot[j][::-1], omega_plot[j][::-1])
-#           phase_y[j].set_data(omega_plot[j][::-1], theta_plot[j][::-1])
-#            axes_v[position['phase_x']].plot(x_plot[j], vx_plot[j], label = f'Phase x{j+1} vs v{j+1}', color = color_tails[j])
-#            axes_v[position['phase_y']].plot(vy_plot[j], y_plot[j], label = f'Phase y{j+1} vs v{j+1}', color = color_tails[j])
             ax_pend_lines[1][j].set_data(x_plot[j][i+1:max(1, i+1-tails[j]):-1], y_plot[j][i+1:max(1,i+1-tails[j]):-1])
             ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
 
@@ -655,12 +617,10 @@ def animate_pendulum_detailed(f, output, n):
         energy[3].set_data(t_plot[::-1], en_tot[::-1])
         for j in range(1, n + 1):
             energy[3+j].set_data(t_plot[::-1], ene_tot_plot[j-1][::-1])
-#            energy[3+j+1].set_data(t_plot[::-1], 
 
 
         axes_v[position['phase']].relim()
         axes_v[position['position_x']].relim()
-#        axes_v[position['phase_y']].relim()
         axes_v[position['position_y']].relim()
         axes_v[position['energy_k_p']].relim()
         axes_v[position['energy_tot']].relim()
@@ -668,7 +628,6 @@ def animate_pendulum_detailed(f, output, n):
 
         axes_v[position['phase']].autoscale_view(True, True, True)
         axes_v[position['position_x']].autoscale_view(True, True, True)
-#        axes_v[position['phase_y']].autoscale_view(True, True, True)
         axes_v[position['position_y']].autoscale_view(True, True, True)
         axes_v[position['energy_k_p']].autoscale_view(True, True, True)
         axes_v[position['energy_tot']].autoscale_view(True, True, True)
@@ -691,8 +650,6 @@ def animate_pendulum_detailed(f, output, n):
 #dati iniziali di default
 # condizioni iniziali
 # angolo iniziale in gradi
-#grad0_1, grad0_2, grad0_3 =  (135, 135, 135)
-#thetas0  =  (grad0_1*2*np.pi / 360 ,grad0_2*2*np.pi / 360 ,grad0_3*2*np.pi / 360)
 lengths  = np.array([1., 1., 1.])
 masses   = np.array([1., 1., 1.])
 grads0 = np.array([135, 135, 135])
@@ -706,7 +663,6 @@ framepersec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
-#f_anim_pendulum = {animate_single_pendulum, 2:animate_double_pendulum, 3:animate_triple_pendulum}
 d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet}
 n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Implicit Verlet \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n")
 
@@ -760,7 +716,6 @@ elif y_n != "y" and y_n:
         print("wrong input.")
         exit()
 
-#f_int = [runge_kutta4, velocity_verlet, trapezoide_implicito, eulero_implicito, eulero_semi_implicito, eulero_esplicito, stormer_verlet] 
 dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 0: "nothing"}
 dict_func = { 1: animate_pendulum_simple,2: animate_pendulum_detailed, 3: the_butterfly_effect}
 perturb = 1e-4
