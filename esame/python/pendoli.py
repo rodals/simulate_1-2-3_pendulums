@@ -341,9 +341,12 @@ def animate_pendulum_simple(f, output, n):
 # lines from a mass to another
         ax_pend_lines[0].append(axes_v[position["motion"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
     # different for so it is better from a visual point of view
-    for p in range(n):
+    for p in range(n-1):
 # tail and points
         ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+
+    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1],lw=1, markevery=1, markeredgecolor = 'k', animated = True)[0])
+    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o',color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1],linestyle='', markevery=1000, markeredgecolor = 'k', animated = True)[0])
 
     time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
     energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
@@ -360,7 +363,7 @@ def animate_pendulum_simple(f, output, n):
     def animate(i):
         global t
         nonlocal u
-        tail = 100
+        tail = 100000
         fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
         for x in range(fps_jump):
             u = f(f_n[n], u)
@@ -387,7 +390,8 @@ def animate_pendulum_simple(f, output, n):
             ax_pend_lines[1][j-1].set_data(x_plot[j-1][i], y_plot[j-1][i])
 
    #     ax_pend_lines[1][n-1].set_data(x_plot[n-1][i+1:0:-1], y_plot[n-1][i+1:0:-1])
-        ax_pend_lines[1][n-1].set_data(x_plot[n-1][i+1:max(1, i-tail):-1], y_plot[n-1][i+1:max(1,i-tail):-1])
+        ax_pend_lines[1][n-1].set_data(x_plot[n-1][max(0, i-tail):i+1], y_plot[n-1][max(0,i-tail):i+1])
+        ax_pend_lines[1][n].set_data(x_plot[n-1][i], y_plot[n-1][i])
     
         time_text.set_text('Time = %.1f' % (t))
         energy_text.set_text('Total Energy = %.9f J' % en_tot[i])
@@ -776,8 +780,6 @@ elif mode == "3":
     fileinput = input("Name output gif [enter to default]:   ")
     if (not fileinput): fileinput = f"{dict_func[mode].__name__}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}_{n_pend_string[n_p]}.mp4"
     running()
-#    print(f"\n Running {dict_func[mode].__name__} {n_pend_string[n_p]} pendulum propagated with {f_int.__name__}")
     dict_func[mode](f_int, fileinput , n_p, n_pend, perturb, n_mode)
 t_end = perf_counter()
-#t_prec = 2
 print(f"Time execution: {t_end - t_start: .4}")
