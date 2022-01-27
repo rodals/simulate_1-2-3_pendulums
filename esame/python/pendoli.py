@@ -615,7 +615,7 @@ def animate_pendulum_detailed(f, output, n):
             axes_v[position['polar']].set_zlabel(r"$\theta_3 (rad)$")
         elif (n ==2 ):
             axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], 'o-',color = 'xkcd:bright blue',markersize = 2, markerfacecolor = 'azure',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
-            axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',ls='', markevery=1, markeredgecolor = 'k', animated = True)
+            axes_v[position['polar']].plot(theta_plot[0][i], theta_plot[1][i], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',ls='', markevery=1, markeredgecolor = 'k', animated = True)
 #            axes_v[position['polar']].set(xlim=(-np.pi, np.pi), ylim=(-np.pi, np.pi))
             axes_v[position['polar']].set_xlabel(r"$\theta_1 (rad)$")
             axes_v[position['polar']].set_ylabel(r"$\theta_2 (rad)$")
