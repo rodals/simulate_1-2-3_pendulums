@@ -1,4 +1,4 @@
-Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.
+# Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.
 There are 3 modality to run:
 Simple, with just the pendulum and nothing more. Fast to run.
 Detailed, with the pendulum and other graphics. Slow to run.

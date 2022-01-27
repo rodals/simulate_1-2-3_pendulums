@@ -306,7 +306,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         return pends, points, track_pends, time_text
 
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
-    anim.save(output)
+    anim.save(output, writer='imagemagick')
     print(" Done             ")
     return anim
 
@@ -746,7 +746,7 @@ if mode == "1" or  mode =="2" or not mode:
     else: mode = 2
     fileinput = input("Name output gif [enter to default]:   ")
     running()
-    dict_func[mode](f_int, f"{dict_func[mode].__name__}_{f_int.__name__}_{n_pend_string[n_p]}.mp4", n_p)
+    dict_func[mode](f_int, f"{dict_func[mode].__name__}_{f_int.__name__}_{n_pend_string[n_p]}.gif", n_p)
 
 
 
@@ -765,8 +765,9 @@ elif mode == "3":
     elif (n_pends): bye()
 
 
+    fileinput_format = input("Name output format [gif]:   ")
     fileinput = input("Name output gif [enter to default]:   ")
-    if (not fileinput): fileinput = f"{dict_func[mode].__name__}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}_{n_pend_string[n_p]}.mp4"
+    if (not fileinput): fileinput = f"{dict_func[mode].__name__}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}_{n_pend_string[n_p]}.gif"
     running()
     dict_func[mode](f_int, fileinput , n_p, n_pend, perturb, n_mode)
 t_end = perf_counter()
