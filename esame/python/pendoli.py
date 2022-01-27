@@ -428,10 +428,11 @@ def animate_pendulum_detailed(f, output, n):
 
     f_n = { 1: f_single, 2: f_double, 3: f_triple}
 
-# graphs 
+# graphs    
+    projection_polar = {1: 'polar',  2: None, 3: '3d'}
     axes_v =[
             fig.add_subplot(3, 3, 1), fig.add_subplot(3, 3, 2), fig.add_subplot(3, 3, 3),
-            fig.add_subplot(3, 3, 4),fig.add_subplot(3,3,5, projection = 'polar'), fig.add_subplot(3,3,6),
+            fig.add_subplot(3, 3, 4),fig.add_subplot(3,3,5, projection = projection_polar[n]), fig.add_subplot(3,3,6),
             fig.add_subplot(3,3,7), fig.add_subplot(3, 3, 8), fig.add_subplot(3, 3, 9)
             ]
 
@@ -474,7 +475,6 @@ def animate_pendulum_detailed(f, output, n):
     for p in range(n):
 # tail and points
         ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
-        ax_pend_lines[2].append(axes_v[position['polar']].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
 
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{k}$',color = 'blue',markersize = 4, markerfacecolor = 'blue',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
     energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{p}$',color = 'orange',markersize = 4, markerfacecolor = 'orange', linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
@@ -524,8 +524,6 @@ def animate_pendulum_detailed(f, output, n):
     axes_v[position['phase']].set_ylabel(r"$\dot{\theta} (rad/s)$")
     axes_v[position['phase']].set_xlim(-np.pi, np.pi)
 
-    axes_v[position['polar']].set_theta_zero_location("S")
-    axes_v[position['polar']].set_rmax(sum(lengths))
 
     axes_v[position['energy_points']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_points']].set_xlabel(r"$t (s)$")
@@ -555,6 +553,7 @@ def animate_pendulum_detailed(f, output, n):
         for p in range(n):
             ax_pend_lines[0][p].set_data([], [])
             ax_pend_lines[1][p].set_data([], [])
+#            ax_pend_lines[2].set_data([], [], [])
         complete_motion.set_data([], [])
         complete_motion_point.set_data([], [])
 
@@ -563,7 +562,7 @@ def animate_pendulum_detailed(f, output, n):
 
         time_text.set_text('')
         energy_text.set_text('')
-        return (ax_pend_lines[0]+ ax_pend_lines[1] + pos_x + pos_y + phase +  energy+ [time_text, energy_text])
+        return (ax_pend_lines[0]+ ax_pend_lines[1] +  pos_x + pos_y + phase +  energy+ [time_text, energy_text])
          
 
     def animate(i):
@@ -606,7 +605,26 @@ def animate_pendulum_detailed(f, output, n):
             pos_y[j].set_data(t_plot[::-1], y_plot[j][::-1])
             phase[j].set_data(theta_plot[j][::-1], omega_plot[j][::-1])
             ax_pend_lines[1][j].set_data(x_plot[j][i+1:max(1, i+1-tails[j]):-1], y_plot[j][i+1:max(1,i+1-tails[j]):-1])
-            ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
+            #ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
+        axes_v[position['polar']].clear()
+        if (n == 3):
+            axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], theta_plot[2][::-1], 'o-',color = color_tails[2],markersize = 2, markerfacecolor = marker_face[0],linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
+            axes_v[position['polar']].plot(theta_plot[0][i], theta_plot[1][i], theta_plot[2][i], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
+            axes_v[position['polar']].set_xlabel(r"$\theta_1 (rad)$")
+            axes_v[position['polar']].set_ylabel(r"$\theta_2 (rad)$")
+            axes_v[position['polar']].set_zlabel(r"$\theta_3 (rad)$")
+        elif (n ==2 ):
+            axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], 'o-',color = 'xkcd:bright blue',markersize = 2, markerfacecolor = 'azure',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
+            axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',ls='', markevery=1, markeredgecolor = 'k', animated = True)
+#            axes_v[position['polar']].set(xlim=(-np.pi, np.pi), ylim=(-np.pi, np.pi))
+            axes_v[position['polar']].set_xlabel(r"$\theta_1 (rad)$")
+            axes_v[position['polar']].set_ylabel(r"$\theta_2 (rad)$")
+        elif (n == 1):
+            axes_v[position['polar']].set_theta_zero_location("S")
+            axes_v[position['polar']].set_rmax(lengths[0])
+            axes_v[position['polar']].plot(theta_plot[0][::-1], r_plot[0][::-1], 'o-',color = 'xkcd:bright blue',markersize = 2, markerfacecolor = 'azure',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
+            axes_v[position['polar']].plot(theta_plot[0][i], r_plot[0][i], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',ls='', markevery=1, markeredgecolor = 'k', animated = True)
+
 
         complete_motion.set_data(x_plot[j], y_plot[j])
         complete_motion_point.set_data(x[n-1], y[n-1])
