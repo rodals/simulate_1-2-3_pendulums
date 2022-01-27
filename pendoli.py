@@ -26,8 +26,8 @@ def angle_mod(theta):
     return theta
     
 def stormer_verlet(f, u):
-    u0 = u[0]
-    um1 = u[1]
+    u0 = copy.deepcopy(u[0])
+    um1 = copy.deepcopy(u[1])
     if(t == 0):
         u0[0:3] += um1[3:6]*h + f(um1, 0)[3:6]*h*h/2
         u0[3:6] = (u0[0:3] - um1[0:3])/h
@@ -35,15 +35,15 @@ def stormer_verlet(f, u):
     u1 = np.zeros(6)
     u1[0:3] = 2*u0[0:3] - um1[0:3]  + f(u0, t)[3:6]*h*h
     u1[3:6] = (u1[0:3] - u0[0:3])/h
-    u[1] = u0
-    u[0] = u1
+    u[1] = copy.deepcopy(u0)
+    u[0] = copy.deepcopy(u1)
     return u
 
-def velocity_verlet(f, u):
+def velocity_verlet_implicito(f, u):
     s = 1e-14 # valore di soglia per risolvere iterativamente equazione autoconsistente
     diff = [2*s, 2*s, 2*s]
-    u0 = u[0]
-    y_1 = np.zeros(6)
+    u0 = copy.deepcopy(u[0])
+    y_1 = copy.deepcopy(u[0])
     y_1[0:3] = u0[0:3] + u0[3:6]*h  + f(u0, t)[3:6]*h*h/2 
     y_1[3:6] = u0[3:6] + f(u0, t)[3:6]*h/2
     add = np.zeros(6)
@@ -52,60 +52,54 @@ def velocity_verlet(f, u):
         add =  f(y_1 + add, t)*h/2
         diff -= add[3:6]
     y_1[3:6]+=add[3:6]
-    u[0] = y_1
+    u[0] = copy.deepcopy(y_1)
+    return u
+
+def velocity_verlet(f, u):
+    y_1 = copy.deepcopy(u[0])
+    y_1[0:3] = u[0][0:3] + u[0][3:6]*h  + f(u[0], t)[3:6]*h*h/2
+    y_1[3:6] = u[0][3:6] + (f(u[0], t)[3:6] + f(y_1, t+h)[3:6])*h/2
+    u[0] = copy.deepcopy(y_1)
     return u
 
 def runge_kutta4(f, u):
-    u0 = u[0]
-    k1 = f(u0, t)*h
-    k2 = f(u0 + k1/2, t +h/2)*h
-    k3 = f(u0 + k2/2 , t + h/2)*h
-    k4 = f(u0 + k3 , t + h)*h
-    u0 = (u0 + (k1 + 2*k2 + 2*k3 + k4)/6.0)
-    u[0] = u0
+    k1 = f(u[0], t)*h
+    k2 = f(u[0] + k1/2, t +h/2)*h
+    k3 = f(u[0] + k2/2 , t + h/2)*h
+    k4 = f(u[0] + k3 , t + h)*h
+    u[0] = (u[0] + (k1 + 2*k2 + 2*k3 + k4)/6.0)
     return u
 
 def eulero_esplicito(f, u):
-    u0 = u[0]
-    u0 = (u0 + f(u0 , t)*h)
-    u[0] = u0
+    u[0] = u[0] + f(u[0] , t)*h
     return u
 
 def eulero_implicito(f, u):
     s = 1e-12
-    u0 = u[0]
     c = np.zeros(6)
     diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
-    p = 0
     while (np.abs(diff)>s).any():
         diff = c
-        c =  f(u0 + c, t+h)*h
+        c =  f(u[0] + c, t+h)*h
         diff -= c
-        p+=1
     u[0] += c        
     return u
             
 def trapezoide_implicito(f, u):
     s = 1e-12
-    u0 = u[0]
     c = np.zeros(6)
     diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
-    p = 0
-    u[0] += f(u0, t)*h/2
-
+    u[0] += f(u[0], t)*h/2
     while (np.abs(diff)>s).any():
         diff = c
-        c =  f(u0 + c, t+h)*h/2
+        c =  f(u[0] + c, t+h)*h/2
         diff -= c
-        p+=1
     u[0] += c        
     return u
  
 def eulero_semi_implicito(f, u):
-    u0 = u[0]
-    u0[3:6] += f(u0 , t)[3:6]*h
-    u0[0:3] += f(u0 , t)[0:3]*h
-    u[0] = u0
+    u[0][3:6] += f(u[0] , t)[3:6]*h
+    u[0][0:3] += f(u[0] , t)[0:3]*h
     return u
 
 def f_triple(u, t):
@@ -218,6 +212,7 @@ def xy_to_segment(x, y, n, n_pend):
 def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     global t, lengths, masses
     t = 0
+
     # mode 0 : thetas mode 1: omegas  mode 2: 
     u0_pend = np.empty((n_pend, 6))
     um1_pend = np.empty((n_pend, 6))
@@ -240,8 +235,6 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     um1= np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     segments = np.zeros((n_pend, (n+1), 2))
 
-    
-
     for i in range(n_pend):
         u0_pend[i] = u0 + perturbation_th_omega*i
         um1_pend[i] = u0 + perturbation_th_omega*i
@@ -259,7 +252,6 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     l_max = np.sum((lengths*1.2 + n_pend*perturbation_lengths) [0:n:1])
     ax.set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
 
-    points, = plt.plot([], [],'ok', lw = '1')
     p_segments = np.zeros((n_pend, 0, 2))
     track_segments = np.zeros((n_pend, 0, 2))
     color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
@@ -267,6 +259,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     track_pends = collections.LineCollection(track_segments, colors = color_lines)
     ax.add_collection(track_pends)
     ax.add_collection(pends)
+    points, = plt.plot([], [],'ok', lw = '1')
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 
     def init():
@@ -306,7 +299,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         return pends, points, track_pends, time_text
 
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
-    anim.save(output, writer='imagemagick')
+    anim.save(output)
     print(" Done             ")
     return anim
 
@@ -682,8 +675,8 @@ framepersec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
-d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet}
-n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Implicit Verlet \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n")
+d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet, 8:velocity_verlet_implicito}
+n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Trapezoid implicit \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n  8 Implicit Velocity Verlet \n  ")
 
 if (n_i == ""): f_int = runge_kutta4
 else: f_int = d_f_int[int(n_i)]
@@ -746,7 +739,7 @@ if mode == "1" or  mode =="2" or not mode:
     else: mode = 2
     fileinput = input("Name output gif [enter to default]:   ")
     running()
-    dict_func[mode](f_int, f"{dict_func[mode].__name__}_{f_int.__name__}_{n_pend_string[n_p]}.gif", n_p)
+    dict_func[mode](f_int, f"{dict_func[mode].__name__}_{f_int.__name__}_{n_pend_string[n_p]}.mp4", n_p)
 
 
 
@@ -765,9 +758,8 @@ elif mode == "3":
     elif (n_pends): bye()
 
 
-    fileinput_format = input("Name output format [gif]:   ")
     fileinput = input("Name output gif [enter to default]:   ")
-    if (not fileinput): fileinput = f"{dict_func[mode].__name__}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}_{n_pend_string[n_p]}.gif"
+    if (not fileinput): fileinput = f"{dict_func[mode].__name__}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}_{n_pend_string[n_p]}.mp4"
     running()
     dict_func[mode](f_int, fileinput , n_p, n_pend, perturb, n_mode)
 t_end = perf_counter()
