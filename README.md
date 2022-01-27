@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-# Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.
-There are 3 modality to run:
-Simple, with just the pendulum and nothing more. Fast to run.
-Detailed, with the pendulum and other graphics. Slow to run.
-The Butterfly Effect, to visualize the chaos of the double and triple pendulum if the pendulum are given slight perturbation to the initial conditions.
-Atm the conditions that can be perturbed are initial angles, initial angular velocities, lengths (only works atm for same lengths pendulum), masses (only perturb the first mass, because otherwise in the double and triple pendulum you have the same motion)
-=======
 **Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.**   
 There are 3 modality to run:   
 1. Simple, with just the pendulum and nothing more. Fast to run.   
@@ -22,5 +14,3 @@ The Butterfly Effect example (perturbation of 1e-6 rad of angle) RK4: ![the_butt
 
 Known problems:
 In TBE Perturbation of pendulum with different lengths eg. (1, 2, 3) gives right results but the visualization is wrong.
-
->>>>>>> 165097f2ecc70dab02177b39ca6d01436ee11af9
