@@ -10,7 +10,7 @@ Simple example RK4: ![animate_pendulum_simple_runge_kutta4_triple](https://user-
 Detailed example RK4: ![animate_pendulum_detailed_runge_kutta4_triple](https://user-images.githubusercontent.com/28791454/151346162-3db437d2-b2b8-436e-9eda-5fb31c2b49a0.gif)
 The Butterfly Effect example (perturbation of 1e-6 rad of angle) RK4: ![the_butterfly_effect-perturb_angles-1e-6-runge_kutta4_triple](https://user-images.githubusercontent.com/28791454/151345660-2e970dfc-baf7-490e-a4e0-a464400e9a20.gif)
 TBE example (perturbation of 1e-2m of length) RK4:  
-https://user-images.githubusercontent.com/28791454/151366861-8622c2bd-14c0-432a-9325-99187d90ff77.mp4
+![tbe_lenght_40](https://user-images.githubusercontent.com/28791454/151368860-0bd1cf36-5c7e-4a28-8dc6-185bcc17cda3.gif)
 
 Double Pendulum:
 
