@@ -62,6 +62,204 @@ def velocity_verlet(f, u):
     u[0] = copy.deepcopy(y_1)
     return u
 
+def eulero_simplettico(f, u):
+    f_d = {f_single: eulero_semi_implicito , f_double: double_pendulum_eulero_simplettico , f_triple: triple_pendulum_dH }
+    if f == f_single :
+        u = f_d[f](f, u)
+    else:    u[0] = f_d[f](u)
+    return u
+
+
+def double_pendulum_dH_oki(u):
+    q1 = u[0][0]
+    q2 = u[0][1]
+    p1 = u[0][3]
+    p2 = u[0][4]
+    s = 1e-12
+    diff1 = 2*s
+    diff2 = 2*s
+    dq1 = 0
+    dq2 = 0
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        dq10 = ((4*(-lengths[0]*(masses[0] + masses[1])*(p2 - dq2) + lengths[1]*masses[1]*(p1 - dq1)*np.cos(q1 - q2))*(-lengths[1]*(p1 - dq1) + lengths[0]*(p2 - dq2)*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2*lengths[1]**2 * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g * lengths[0] * ( masses[0] + masses[1] ) * np.sin(q1))*h
+        dq20 = ((4*(-lengths[0]*(masses[0] + masses[1])*(p2 - dq2) + lengths[1]*masses[1]*(p1 - dq1)*np.cos(q1 - q2))*(lengths[1]*(p1 - dq1) - lengths[0]*(p2 - dq2)*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2 * lengths[1]**2  * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g*lengths[1] * masses[1] * np.sin(q2))*h 
+        diff1 = dq1 -  dq10
+        diff2 = dq2 - dq20
+        dq1 = dq10
+        dq2 = dq20
+
+    p1 -= dq1
+    p2 -= dq2
+
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    dp1 =  ((-2*lengths[1]**2  * masses[1]*(p1) + 2*lengths[0]*lengths[1]*masses[1]*(p2)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    dp2 = ((-2*lengths[0]**2 * (masses[0] + masses[1])*(p2) + 2*lengths[0]*lengths[1]*masses[1]*(p1)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    q1 = q1 + dp1 * h
+    q2 = q2 + dp2 * h
+    return np.array([q1, q2, 0,  p1, p2, 0])
+
+def double_pendulum_eulero_simplettico(u):
+    q1 = u[0][0]
+    q2 = u[0][1]
+    p1 = u[0][3]
+    p2 = u[0][4]
+    s = 1e-12
+    diff1 = 2*s
+    diff2 = 2*s
+    dq1 = 0
+    dq2 = 0
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        a = lengths[0]*lengths[1]*(masses[1]*np.sin(q1 - q2)**2 + masses[0])
+        b = np.sin(q1 - q2)*((lengths[0]**2 * (p2-dq2)**2 * (masses[0] + masses[1]) + lengths[1]**2 *masses[1]*(p1 - dq1)**2) *np.cos(q1 - q2) - (p1-dq1)*(p2-dq2)*(2*lengths[0]*lengths[1]*(masses[0] + masses[1]) - a))/(a*a)
+
+        dq10 = (-b + g*lengths[0]*(masses[0] + masses[1])*np.sin(q1) )*h
+        dq20 = (b + g*lengths[1]*masses[1]*np.sin(q2))*h
+
+        diff1 = dq1 -  dq10
+        diff2 = dq2 - dq20
+        dq1 = dq10
+        dq2 = dq20
+
+    p1 -= dq1
+    p2 -= dq2
+
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    dp1 =  ((-2*lengths[1]**2  * masses[1]*(p1) + 2*lengths[0]*lengths[1]*masses[1]*(p2)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    dp2 = ((-2*lengths[0]**2 * (masses[0] + masses[1])*(p2) + 2*lengths[0]*lengths[1]*masses[1]*(p1)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    q1 = q1 + dp1 * h
+    q2 = q2 + dp2 * h
+    return np.array([q1, q2, 0,  p1, p2, 0])
+
+
+
+def double_pendulum_dH_yep(u):
+    q1 = u[0][0]
+    q2 = u[0][1]
+    p1 = u[0][3]
+    p2 = u[0][4]
+    a = lengths[0]*lengths[1]*(masses[1]*np.sin(q1 - q2)**2 + masses[0])
+    b = np.sin(q1 - q2)*((lengths[0]*lengths[0]*p2*p2*(masses[0] + masses[1]) + lengths[1]*lengths[1]*masses[1]*p1*p1)*np.cos(q1 - q2) - p1*p2*(2*lengths[0]*lengths[1]*(masses[0] + masses[1]) - a))/(a*a)
+    dq1 = (-b - g*lengths[0]*(masses[0] + masses[1])*np.sin(q1) )
+    dq2 = (b - g*lengths[1]*masses[1]*np.sin(q2))
+    dp1 = ((p1*lengths[1] - p2*lengths[0]*np.cos(q1 - q2))/(lengths[0]*a))
+    dp2 = (p2*(masses[0] + masses[1])*lengths[0]/(lengths[1]*masses[1]*a) - p1*np.cos(q1 - q2)/a)
+    return np.array([dq1, dq2, 0,  dp1, dp2, 0])
+
+
+
+def double_pendulum_dH_9(u):
+    q1 = u[0][0]
+    q2 = u[0][1]
+    p1 = copy.deepcopy(u[0][3])
+    p2 = copy.deepcopy(u[0][4])
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    s = 1e-9
+    diff1 = 2*s
+    diff2 = 2*s
+    cou = 0
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        diff1 = copy.deepcopy(p1)
+        diff2 = copy.deepcopy(p2)
+        p1p = (-2*lengths[1]**2  * masses[1]*p1 + 2*lengths[0]*lengths[1]*masses[1]*p2*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2)))
+        p2p = (-2*lengths[0]**2 * (masses[0] + masses[1])*p2 + 2*lengths[0]*lengths[1]*masses[1]*p1*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2)))
+        diff1 -= p1p
+        diff2 -= p2p
+        print(f"{diff1} , {diff2} | {p1}, {p1p} | {p2}, {p2p}")
+
+        p1 = copy.deepcopy(p1p)
+        p2 = copy.deepcopy(p2p)
+        cou+=1
+
+    print(cou)
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    dq1 = (4*(-lengths[0]*(masses[0] + masses[1])*p2 + lengths[1]*masses[1]*p1*np.cos(q1 - q2))*(-lengths[1]*p1 + lengths[0]*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2*lengths[1]**2 * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g * lengths[0] * ( masses[0] + masses[1] ) * np.sin(q1)
+    dq2 = (4*(-lengths[0]*(masses[0] + masses[1])*p2 + lengths[1]*masses[1]*p1*np.cos(q1 - q2))*(lengths[1]*p1 - lengths[0]*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2 * lengths[1]**2  * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g*lengths[1] * masses[1] * np.sin(q2)
+    return np.array([dq1, dq2, 0,  p1, p2, 0])
+
+def double_pendulum_dH_ff(u):
+    q1 = copy.deepcopy(u[0][0])
+    q2 = copy.deepcopy(u[0][1])
+    p1 = copy.deepcopy(u[0][3])
+    p2 = copy.deepcopy(u[0][4])
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    s = 1e-9
+    diff1 = 2*s
+    diff2 = 2*s
+    cou = 0
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        diff1 = copy.deepcopy(q1)
+        diff2 = copy.deepcopy(q2)
+        q1p = (4*(-lengths[0]*(masses[0] + masses[1])*p2 + lengths[1]*masses[1]*p1*np.cos(q1 - q2))*(-lengths[1]*p1 + lengths[0]*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2*lengths[1]**2 * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g * lengths[0] * ( masses[0] + masses[1] ) * np.sin(q1)
+        q2p = (4*(-lengths[0]*(masses[0] + masses[1])*p2 + lengths[1]*masses[1]*p1*np.cos(q1 - q2))*(lengths[1]*p1 - lengths[0]*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2 * lengths[1]**2  * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g*lengths[1] * masses[1] * np.sin(q2)
+        diff1 -= q1p
+        diff2 -= q2p
+#        print(f"{diff1} , {diff2} | {q1}, {q1p} | {q2}, {q2p}")
+
+        q1 = copy.deepcopy(q1p)
+        q2 = copy.deepcopy(q2p)
+        cou+=1
+
+    print(cou)
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    p1 = (-2*lengths[1]**2  * masses[1]*p1 + 2*lengths[0]*lengths[1]*masses[1]*p2*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2)))
+    p2 = (-2*lengths[0]**2 * (masses[0] + masses[1])*p2 + 2*lengths[0]*lengths[1]*masses[1]*p1*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2)))
+    return np.array([q1, q2, 0,  p1, p2, 0])
+
+
+
+
+def triple_pendulum_dH(u):
+    l1, l2, l3 = lengths[0], lengths[1], lengths[2]
+    m1, m2, m3 = masses[0], masses[1], masses[2]
+    q1 = u[0][0]
+    q2 = u[0][1]
+    q3 = u[0][2]
+    p1 = u[0][3]
+    p2 = u[0][4]
+    p3 = u[0][5]
+    s = 1e-12
+    diff1 = 2*s
+    diff2 = 2*s
+    diff3 = 2*s
+    dq1 = 0
+    dq2 = 0
+    dq3 = 0
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    while (np.abs(diff1) > s or np.abs(diff2) > s or np.abs(diff3) > s):
+
+        dq10 = (2*(-(l1*l3*(2*m2 + m3)*p2*np.cos(q1 - q2)) +    l1*l3*m3*p2*np.cos(q1 + q2 - 2*q3) +    l2*(2*l3*m2*p1 + l3*m3*p1 - l1*(m2 + m3)*p3*np.cos(q1 - q3) -      l3*m3*p1*np.cos(2*(q2 - q3)) + l1*m2*p3*np.cos(q1 - 2*q2 + q3) +      l1*m3*p3*np.cos(q1 - 2*q2 + q3)))*  (l1*l3*(2*m2*(m2 + m3) + m1*(2*m2 + m3))*p2*np.sin(q1 - q2) -    l2*l3*m2*(m2 + m3)*p1*np.sin(2*(q1 - q2)) +    l1*m1*(-(l3*m3*p2*np.sin(q1 + q2 - 2*q3)) +      2*l2*(m2 + m3)*p3*np.cos(q1 - q2)*np.sin(q2 - q3))))/ (l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 -     m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)
+        dq20 = ((-2*l2**2*l3**2*m2*m3*p1**2 - l2**2*l3**2*m3**2*p1**2 - 2*l1**2*l3**2*m1*m3*p2**2 - 2*l1**2*l3**2*m2*m3*p2**2 - l1**2*l3**2*m3**2*p2**2 - 2*l1**2*l2**2*m1*m2*p3**2 - l1**2*l2**2*m2**2*p3**2 - 2*l1**2*l2**2*m1*m3*p3**2 - 2*l1**2*l2**2*m2*m3*p3**2 - l1**2*l2**2*m3**2*p3**2 - 2*l1**2*l2**2*l3**2*m1*m2*m3*U -     l1**2*l2**2*l3**2*m2**2*m3*U - l1**2*l2**2*l3**2*m1*m3**2*U - l1**2*l2**2*l3**2*m2*m3**2*U + 2*l1*l2*l3**2*m3*(2*m2 + m3)*p1*p2*np.cos(q1 - q2) + l1**2*l2**2*(m2 + m3)*(m2*p3**2 + m3*p3**2 + l3**2*m2*m3*U)*np.cos(2*(q1 - q2)) - 2*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) +     2*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) + 2*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) + l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) - 2*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) - 2*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) + 4*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) +     2*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) + 2*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) + l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) + l1**2*l2**2*l3**2*m1*m3**2*U*np.cos(2*(q2 - q3)) - 2*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) - 2*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3))*   (-2*m2*(m2 + m3)*np.sin(2*(q1 - q2)) + 2*m1*m3*np.sin(2*(q2 - q3))) - 2*l2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*(l1*l3**2*m3*(2*m2 + m3)*p1*p2*np.sin(q1 - q2) + l1**2*l2*(m2 + m3)*(m3*p3**2 + m2*(p3**2 + l3**2*m3*U))*np.sin(2*(q1 - q2)) -     l3*m3*(-(l1*l3*m3*p1*p2*np.sin(q1 + q2 - 2*q3)) + l1**2*(m2 + m3)*p2*p3*np.sin(2*q1 - q2 - q3) + 2*l1**2*m1*p2*p3*np.sin(q2 - q3) + l1**2*m2*p2*p3*np.sin(q2 - q3) + l1**2*m3*p2*p3*np.sin(q2 - q3) + l2*l3*m3*p1**2*np.sin(2*(q2 - q3)) + l1**2*l2*l3*m1*m3*U*np.sin(2*(q2 - q3)) +       2*l1*l2*m2*p1*p3*np.sin(q1 - 2*q2 + q3) + 2*l1*l2*m3*p1*p3*np.sin(q1 - 2*q2 + q3))))/(l1**2*l2**2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)
+        dq30 = (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 - l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) + l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) - 2*l1*l3*m1*m3*p2*np.cos(q2 - q3) -    l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) + l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3))*  (l1*l2*m1*p3*np.sin(2*(q2 - q3)) - l3*(l2*m2*p1*np.sin(q1 - q3) - l1*m2*p2*np.sin(2*q1 - q2 - q3) + 2*l1*m1*p2*np.sin(q2 - q3) + l1*m2*p2*np.sin(q2 - q3) + l2*m2*p1*np.sin(q1 - 2*q2 + q3))))/(l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)
+        diff1 = dq1 -  dq10
+        diff2 = dq2 - dq20
+        diff3 = dq3 - dq30
+        dq1 = dq10
+        dq2 = dq20
+
+    p1 -= dq1
+    p2 -= dq2
+    p3 -= dq3
+
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    dp1 =  (2*(-(l1*l3*(2*m2 + m3)*p2*np.cos(q1 - q2)) + l1*l3*m3*p2*np.cos(q1 + q2 - 2*q3) + l2*(2*l3*m2*p1 + l3*m3*p1 - l1*(m2 + m3)*p3*np.cos(q1 - q3) - l3*m3*p1*np.cos(2*(q2 - q3)) + l1*m2*p3*np.cos(q1 - 2*q2 + q3) + l1*m3*p3*np.cos(q1 - 2*q2 + q3))))/ (l1**2*l2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+    dp2 = (2*(-(l2*l3*(2*m2 + m3)*p1*np.cos(q1 - q2)) + l2*l3*m3*p1*np.cos(q1 + q2 - 2*q3) + l1*(2*l3*m1*p2 + 2*l3*m2*p2 + l3*m3*p2 - l3*m3*p2*np.cos(2*(q1 - q3)) + l2*(m2 + m3)*p3*np.cos(2*q1 - q2 - q3) - 2*l2*m1*p3*np.cos(q2 - q3) - l2*m2*p3*np.cos(q2 - q3) - l2*m3*p3*np.cos(q2 - q3))))/ (l1*l2**2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+    dp3 = (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 - l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) + l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) - 2*l1*l3*m1*m3*p2*np.cos(q2 - q3) -    l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) + l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3)))/(l1*l2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+    q1 = q1 + dp1 * h
+    q2 = q2 + dp2 * h
+    q3 = q3 + dp3 * h
+    return np.array([q1, q2, q3,  p1, p2, p3])
+
+
+#    dq1 = (2*(-(l1*l3*(2*m2 + m3)*p2*np.cos(q1 - q2)) +    l1*l3*m3*p2*np.cos(q1 + q2 - 2*q3) +    l2*(2*l3*m2*p1 + l3*m3*p1 - l1*(m2 + m3)*p3*np.cos(q1 - q3) -      l3*m3*p1*np.cos(2*(q2 - q3)) + l1*m2*p3*np.cos(q1 - 2*q2 + q3) +      l1*m3*p3*np.cos(q1 - 2*q2 + q3)))*  (l1*l3*(2*m2*(m2 + m3) + m1*(2*m2 + m3))*p2*np.sin(q1 - q2) -    l2*l3*m2*(m2 + m3)*p1*np.sin(2*(q1 - q2)) +    l1*m1*(-(l3*m3*p2*np.sin(q1 + q2 - 2*q3)) +      2*l2*(m2 + m3)*p3*np.cos(q1 - q2)*np.sin(q2 - q3))))/ (l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 -     m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)
+#    dq2 = ((-2*l2**2*l3**2*m2*m3*p1**2 - l2**2*l3**2*m3**2*p1**2 - 2*l1**2*l3**2*m1*m3*p2**2 - 2*l1**2*l3**2*m2*m3*p2**2 - l1**2*l3**2*m3**2*p2**2 - 2*l1**2*l2**2*m1*m2*p3**2 - l1**2*l2**2*m2**2*p3**2 - 2*l1**2*l2**2*m1*m3*p3**2 - 2*l1**2*l2**2*m2*m3*p3**2 - l1**2*l2**2*m3**2*p3**2 - 2*l1**2*l2**2*l3**2*m1*m2*m3*U -     l1**2*l2**2*l3**2*m2**2*m3*U - l1**2*l2**2*l3**2*m1*m3**2*U - l1**2*l2**2*l3**2*m2*m3**2*U + 2*l1*l2*l3**2*m3*(2*m2 + m3)*p1*p2*np.cos(q1 - q2) + l1**2*l2**2*(m2 + m3)*(m2*p3**2 + m3*p3**2 + l3**2*m2*m3*U)*np.cos(2*(q1 - q2)) - 2*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) +     2*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) + 2*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) + l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) - 2*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) - 2*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) + 4*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) +     2*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) + 2*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) + l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) + l1**2*l2**2*l3**2*m1*m3**2*U*np.cos(2*(q2 - q3)) - 2*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) - 2*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3))*   (-2*m2*(m2 + m3)*np.sin(2*(q1 - q2)) + 2*m1*m3*np.sin(2*(q2 - q3))) - 2*l2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*(l1*l3**2*m3*(2*m2 + m3)*p1*p2*np.sin(q1 - q2) + l1**2*l2*(m2 + m3)*(m3*p3**2 + m2*(p3**2 + l3**2*m3*U))*np.sin(2*(q1 - q2)) -     l3*m3*(-(l1*l3*m3*p1*p2*np.sin(q1 + q2 - 2*q3)) + l1**2*(m2 + m3)*p2*p3*np.sin(2*q1 - q2 - q3) + 2*l1**2*m1*p2*p3*np.sin(q2 - q3) + l1**2*m2*p2*p3*np.sin(q2 - q3) + l1**2*m3*p2*p3*np.sin(q2 - q3) + l2*l3*m3*p1**2*np.sin(2*(q2 - q3)) + l1**2*l2*l3*m1*m3*U*np.sin(2*(q2 - q3)) +       2*l1*l2*m2*p1*p3*np.sin(q1 - 2*q2 + q3) + 2*l1*l2*m3*p1*p3*np.sin(q1 - 2*q2 + q3))))/(l1**2*l2**2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)
+#    dq3 = (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 - l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) + l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) - 2*l1*l3*m1*m3*p2*np.cos(q2 - q3) -    l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) + l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3))*  (l1*l2*m1*p3*np.sin(2*(q2 - q3)) - l3*(l2*m2*p1*np.sin(q1 - q3) - l1*m2*p2*np.sin(2*q1 - q2 - q3) + 2*l1*m1*p2*np.sin(q2 - q3) + l1*m2*p2*np.sin(q2 - q3) + l2*m2*p1*np.sin(q1 - 2*q2 + q3))))/(l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)
+#    dp1 = (2*(-(l1*l3*(2*m2 + m3)*p2*np.cos(q1 - q2)) + l1*l3*m3*p2*np.cos(q1 + q2 - 2*q3) + l2*(2*l3*m2*p1 + l3*m3*p1 - l1*(m2 + m3)*p3*np.cos(q1 - q3) - l3*m3*p1*np.cos(2*(q2 - q3)) + l1*m2*p3*np.cos(q1 - 2*q2 + q3) + l1*m3*p3*np.cos(q1 - 2*q2 + q3))))/ (l1**2*l2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+#    dp2 = (2*(-(l2*l3*(2*m2 + m3)*p1*np.cos(q1 - q2)) + l2*l3*m3*p1*np.cos(q1 + q2 - 2*q3) + l1*(2*l3*m1*p2 + 2*l3*m2*p2 + l3*m3*p2 - l3*m3*p2*np.cos(2*(q1 - q3)) + l2*(m2 + m3)*p3*np.cos(2*q1 - q2 - q3) - 2*l2*m1*p3*np.cos(q2 - q3) - l2*m2*p3*np.cos(q2 - q3) - l2*m3*p3*np.cos(q2 - q3))))/ (l1*l2**2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+#    dp3 = (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 - l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) + l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) - 2*l1*l3*m1*m3*p2*np.cos(q2 - q3) -    l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) + l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3)))/(l1*l2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+
+
 def runge_kutta4(f, u):
     k1 = f(u[0], t)*h
     k2 = f(u[0] + k1/2, t +h/2)*h
@@ -675,8 +873,8 @@ framepersec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
-d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet, 8:velocity_verlet_implicito}
-n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Trapezoid implicit \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n  8 Implicit Velocity Verlet \n  ")
+d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet, 8:velocity_verlet_implicito, 9: eulero_simplettico}
+n_i =  input("Method of Numerical integration ? \n  [1] Runge Kutta 4 \n  2 Velocity Verlet \n  3 Trapezoid implicit \n  4 Implicit Eulero \n  5 Semi-Implicit Eulero  \n  6 Explicit Eulero \n  7 Stormer Verlet \n  8 Implicit Velocity Verlet \n  9 Eulero Simplettico")
 
 if (n_i == ""): f_int = runge_kutta4
 else: f_int = d_f_int[int(n_i)]
