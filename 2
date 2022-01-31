@@ -26,11 +26,6 @@ def angle_mod(theta):
     return theta
     
 def stormer_verlet(f, u):
-    f_d = {f_double: pendulum_stormer_verlet , f_triple: pendulum_stormer_verlet }
-    if not f == f_single :
-        u[0] = f_d[f](f, u)
-        return u
-
     u0 = copy.deepcopy(u[0])
     um1 = copy.deepcopy(u[1])
     if(t == 0):
@@ -68,15 +63,13 @@ def velocity_verlet(f, u):
     return u
 
 def eulero_simplettico(f, u):
-    # eulero_semi_implicito
-    f_d = {f_single: pendulum_eulero_simplettico , f_double: pendulum_eulero_simplettico , f_triple: pendulum_eulero_simplettico }
-#    if f == f_single :
-#        u = f_d[f](f, u)
-#    else:
-    u[0] = f_d[f](f, u)
+    f_d = {f_single: eulero_semi_implicito , f_double: double_pendulum_eulero_simplettico , f_triple: triple_pendulum_dH }
+    if f == f_single :
+        u = f_d[f](f, u)
+    else:    u[0] = f_d[f](u)
     return u
 
-def double_pendulum_eulero_simplettico_s(u):
+def double_pendulum_eulero_simplettico(u):
     q1 = u[0][0]
     q2 = u[0][1]
     p1 = u[0][3]
@@ -105,110 +98,89 @@ def double_pendulum_eulero_simplettico_s(u):
     q2 = q2 + dp2 * h
     return np.array([q1, q2, 0,  p1, p2, 0])
 
-
-
-
-def pendulum_eulero_simplettico(f, u):
-    f_q = {f_single: single_d_q_H, f_double: double_d_q_H, f_triple: triple_d_q_H}
-    f_p = {f_single: single_d_q_H, f_double: double_d_p_H, f_triple: triple_d_p_H}
-    q = u[0][0:3]
-    p = u[0][3:6]
-    s = 1e-14
-# if non separable implicit, otherwise it automatically exit:  p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n ) 
-    p  -= implicito(f_q[f], q, p, h, s, "p")
-#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
-    q  += f_p[f]( q, p)*h
-    return np.concatenate((q, p), axis=None)
-
-def pendulum_stormer_verlet(f, u):
-    f_q = {f_double: double_d_q_H, f_triple: triple_d_q_H}
-    f_p = {f_double: double_d_p_H, f_triple: triple_d_p_H}
-    q = u[0][0:3]
-    p = u[0][3:6]
+def double_pendulum_eulero_simplettico(u):
+    q1 = u[0][0]
+    q2 = u[0][1]
+    p1 = u[0][3]
+    p2 = u[0][4]
     s = 1e-12
-    p  -= implicito(f_q[f], q, p, h/2, s, "p")
+    diff1 = 2*s
+    diff2 = 2*s
+    dq1 = 0
+    dq2 = 0
+# implicito p_{n+1/2} = p_n - h/2 * d_{q_i} H( p_{n+1/2}, q_n )
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        dq10 = ((4*(-lengths[0]*(masses[0] + masses[1])*(p2 - dq2) + lengths[1]*masses[1]*(p1 - dq1)*np.cos(q1 - q2))*(-lengths[1]*(p1 - dq1) + lengths[0]*(p2 - dq2)*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2*lengths[1]**2 * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g * lengths[0] * ( masses[0] + masses[1] ) * np.sin(q1))*h/2
+        dq20 = ((4*(-lengths[0]*(masses[0] + masses[1])*(p2 - dq2) + lengths[1]*masses[1]*(p1 - dq1)*np.cos(q1 - q2))*(lengths[1]*(p1 - dq1) - lengths[0]*(p2 - dq2)*np.cos(q1 - q2))*np.sin(q1 - q2))/(lengths[0]**2 * lengths[1]**2  * (2*masses[0] + masses[1] - masses[1]*np.cos(2*(q1 - q2)))**2) + g*lengths[1] * masses[1] * np.sin(q2))*h/2 
+        diff1 = dq1 -  dq10
+        diff2 = dq2 - dq20
+        dq1 = dq10
+        dq2 = dq20
 
-    dq1  = f_p[f]( q, p)*h/2
-    q  += implicito(f_p[f], q, p, h/2, s, "q")
-    q += dq1
+    p1 -= dq1
+    p2 -= dq2
 
-    p -= f_q[f](q, p)*h/2
-    return np.concatenate((q, p), axis=None)
+# implicito  q_{n+1/2} = q_n + h/2 * (d_{p_i} H( p_{n+1/2}, q_n ) + d_{p_i} H( p_{n+1/2}, q_{n+1} ))
 
+    dp1_1 = ((-2*lengths[1]**2  * masses[1]*(p1) + 2*lengths[0]*lengths[1]*masses[1]*(p2)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    dp2_1 = ((-2*lengths[0]**2 * (masses[0] + masses[1])*(p2) + 2*lengths[0]*lengths[1]*masses[1]*(p1)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
 
-def implicito(f, q, p, h_inc,  s, p_or_q):
-    diff = np.array([2*s, 2*s, 2*s]) 
-    d = np.array([0, 0, 0])
-    while( (np.abs(diff) > s).any()):
-        if(p_or_q =="q"): d1 = f(q+d, p)*h_inc
-        elif(p_or_q =="p"):  d1 = f(q, p-d)*h_inc
-        diff = d1 -  d
-        d = copy.deepcopy(d1)
-    return d
+    q1 = q1 + dp1_1*h/2
+    q2 = q2 + dp2_1*h/2
 
-def single_d_q_H(q, p):
-    dq = np.zeros(3)
-    (q1, q2, q3) = q
-    (p1, p2, p3) = p
-    dq[0] = masses[0]*g*lengths[0]*np.sin(q1)
-    return dq
+    diff1 = 2*s
+    diff2 = 2*s
+    dp10_0 = 0
+    dp20_2 = 0
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        dp1_2 = ((-2*lengths[1]**2  * masses[1]*(p1) + 2*lengths[0]*lengths[1]*masses[1]*(p2)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+        dp2_2 = ((-2*lengths[0]**2 * (masses[0] + masses[1])*(p2) + 2*lengths[0]*lengths[1]*masses[1]*(p1)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+        diff1 = dp1_2 -  dp10_2
+        diff2 = dp2_2 - dp20_2
+        dp1_2 = dp10
+        dp2_2 = dp20
 
-def single_d_p_H(q, p):
-    dp = np.zeros(3)
-    (q1, q2, q3) = q
-    (p1, p2, p3) = p
-    dp[0] = p1/(masses[0]*lengths[0]**2)
-    return dp
-
-def double_d_p_H(q, p):
-    l1, l2, l3 = lengths[0], lengths[1], lengths[2]
-    m1, m2, m3 = masses[0], masses[1], masses[2]
-    dp = np.zeros(3)
-    (q1, q2, q3) = q
-    (p1, p2, p3) = p
-
-    dp[0] =  (2*l2**2*m2*p1 - 2*l1*l2*m2*p2*np.cos(q1 - q2))/(2*l1**2*l2**2*   m2*(m1 + m2 - m2*np.cos(q1 - q2)**2))
-    dp[1] =  (2*l1**2*(m1 + m2)*p2 - 2*l1*l2*m2*p1*np.cos(q1 - q2))/(2*l1**2*l2**2*   m2*(m1 + m2 - m2*np.cos(q1 - q2)**2))
-    return dp
-
-def double_d_q_H(q, p):
-    l1, l2, l3 = lengths[0], lengths[1], lengths[2]
-    m1, m2, m3 = masses[0], masses[1], masses[2]
-    dq = np.zeros(3)
-    (q1, q2, q3) = q
-    (p1, p2, p3) = p 
-
-    dq[0] = g*l1*(m1 + m2)*  np.sin(q1) - (np.cos(q1 - q2)*(l2**2*m2*p1**2 + l1**2*(m1 + m2)*p2**2 -       2*l1*l2*m2*p1*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/     (l1**2*l2**2*(m1 + m2 - m2*np.cos(q1 - q2)**2)**2) + (p1*p2*    np.sin(q1 - q2))/(l1*l2*(m1 + m2 - m2*np.cos(q1 - q2)**2))
-
-    dq[1] = (np.cos(q1 - q2)*(l2**2*m2*p1**2 + l1**2*(m1 + m2)*p2**2 -       2*l1*l2*m2*p1*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/     (l1**2*l2**2*(m1 + m2 - m2*np.cos(q1 - q2)**2)**2) - (p1*p2*    np.sin(q1 - q2))/(l1*l2*(m1 + m2 - m2*np.cos(q1 - q2)**2)) +  g*l2*m2*np.sin(q2)
-    return dq
-
-def triple_d_q_H(q, p):
-    dq = np.zeros(3)
-    (q1, q2, q3) = q
-    (p1, p2, p3) = p 
-    l1, l2, l3 = lengths[0], lengths[1], lengths[2]
-    m1, m2, m3 = masses[0], masses[1], masses[2]
-
-    dq[0] =  (2*m2*(m2 + m3)*(-4*l2**2*l3**2*m2*m3*p1**2 - 2*l2**2*l3**2*m3**2*p1**2 - 4*l1**2*l3**2*m1*m3*p2**2 -     4*l1**2*l3**2*m2*m3*p2**2 - 2*l1**2*l3**2*m3**2*p2**2 - 4*l1**2*l2**2*m1*m2*p3**2 -    2*l1**2*l2**2*m2**2*p3**2 - 4*l1**2*l2**2*m1*m3*p3**2 - 4*l1**2*l2**2*m2*m3*p3**2 -     2*l1**2*l2**2*m3**2*p3**2 + 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) - g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) -     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) - 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) -     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) +     8*l1*l2*l3**2*m2*m3*p1*p2*np.cos(q1 - q2) + 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 - q2) +     2*l1**2*l2**2*m2**2*p3**2*np.cos(2*(q1 - q2)) + 4*l1**2*l2**2*m2*m3*p3**2*np.cos(2*(q1 - q2)) +     2*l1**2*l2**2*m3**2*p3**2*np.cos(2*(q1 - q2)) - g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) -     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) - g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) +     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) +     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) + 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) +     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) -     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) - g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) - 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) -     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) - g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) +     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) + 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) +     2*l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) - g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) -     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) - 4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) -     4*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) + 8*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) +     4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) + 4*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) +     2*l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) - g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) +     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) +     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) -     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) - 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3) -     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) - g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) - g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*np.sin(2*(q1 - q2)) -   l1*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (-2*g*l1**2*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) + m1*(3*m2**2 + 4*m2*m3 + m3**2))*     np.sin(q1) + 2*g*l1*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.sin(2*q1 - 3*q2) +     g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(q1 - 2*q2) + g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(q1 - 2*q2) +     g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2) + 2*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(q1 - 2*q2) +     g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(q1 - 2*q2) + 3*g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(3*q1 - 2*q2) +     3*g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(3*q1 - 2*q2) + 3*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(3*q1 - 2*q2) +     6*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(3*q1 - 2*q2) + 3*g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(3*q1 - 2*q2) -     8*l2*l3**2*m2*m3*p1*p2*np.sin(q1 - q2) - 4*l2*l3**2*m3**2*p1*p2*np.sin(q1 - q2) -     4*l1*l2**2*m2**2*p3**2*np.sin(2*(q1 - q2)) - 8*l1*l2**2*m2*m3*p3**2*np.sin(2*(q1 - q2)) -     4*l1*l2**2*m3**2*p3**2*np.sin(2*(q1 - q2)) + 2*g*l1*l2**3*l3**2*m2**3*m3*np.sin(2*q1 - q2) +     4*g*l1*l2**3*l3**2*m2**2*m3**2*np.sin(2*q1 - q2) + 2*g*l1*l2**3*l3**2*m2*m3**3*np.sin(2*q1 - q2) +     4*l2*l3**2*m3**2*p1*p2*np.sin(q1 + q2 - 2*q3) + g*l1**2*l2**2*l3**2*m1**2*m3**2*np.sin(q1 + 2*q2 - 2*q3) +     g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q1 + 2*q2 - 2*q3) + g*l1**2*l2**2*l3**2*m1*m3**3*     np.sin(q1 + 2*q2 - 2*q3) - 4*l2**2*l3*m2*m3*p1*p3*np.sin(q1 - q3) -     4*l2**2*l3*m3**2*p1*p3*np.sin(q1 - q3) - 4*l1*l3**2*m3**2*p2**2*np.sin(2*(q1 - q3)) +     2*g*l1*l2**2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 - q3) + 2*g*l1*l2**2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 - q3) + 8*l1*l2*l3*m2*m3*p2*p3*np.sin(2*q1 - q2 - q3) +     8*l1*l2*l3*m3**2*p2*p3*np.sin(2*q1 - q2 - q3) + 4*l2**2*l3*m2*m3*p1*p3*np.sin(q1 - 2*q2 + q3) +     4*l2**2*l3*m3**2*p1*p3*np.sin(q1 - 2*q2 + q3) + 2*g*l1*l2**2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 + q3) +     2*g*l1*l2**2*l3**3*m2*m3**3*np.sin(2*q1 - 2*q2 + q3) + g*l1**2*l2**2*l3**2*m1**2*m3**2*     np.sin(q1 - 2*q2 + 2*q3) + g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2 + 2*q3) +     g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q1 - 2*q2 + 2*q3)))/ (2*l1**2*l2**2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -     m1*m3*np.cos(2*(q2 - q3)))**2)        
-    dq[1] = ((-4*l2**2*l3**2*m2*m3*p1**2 - 2*l2**2*l3**2*m3**2*p1**2 - 4*l1**2*l3**2*m1*m3*p2**2 -     4*l1**2*l3**2*m2*m3*p2**2 - 2*l1**2*l3**2*m3**2*p2**2 - 4*l1**2*l2**2*m1*m2*p3**2 -     2*l1**2*l2**2*m2**2*p3**2 - 4*l1**2*l2**2*m1*m3*p3**2 - 4*l1**2*l2**2*m2*m3*p3**2 -     2*l1**2*l2**2*m3**2*p3**2 + 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) - g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) -     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) - 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) -     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) +     8*l1*l2*l3**2*m2*m3*p1*p2*np.cos(q1 - q2) + 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 - q2) +     2*l1**2*l2**2*m2**2*p3**2*np.cos(2*(q1 - q2)) + 4*l1**2*l2**2*m2*m3*p3**2*np.cos(2*(q1 - q2)) +     2*l1**2*l2**2*m3**2*p3**2*np.cos(2*(q1 - q2)) - g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) -     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) - g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) +     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) +     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) + 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) +     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) -     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) - g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) - 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) -     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) - g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) +     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) + 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) +     2*l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) - g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) -     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) - 4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) -     4*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) + 8*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) +     4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) + 4*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) +     2*l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) - g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) +     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) +     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) -     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) - 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3) -     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) - g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) - g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*(-2*m2*(m2 + m3)*np.sin(2*(q1 - q2)) + 2*m1*m3*np.sin(2*(q2 - q3))) -   l2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (-3*g*l1**2*l2**2*l3**2*m2*m3*(m2 + m3)**2*np.sin(2*q1 - 3*q2) - 2*g*l1**3*l2*l3**2*m2*m3*(m2 + m3)*     (m1 + m2 + m3)*np.sin(q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m1*m2**2*m3*np.sin(3*q1 - 2*q2) -     2*g*l1**3*l2*l3**2*m2**3*m3*np.sin(3*q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m1*m2*m3**2*np.sin(3*q1 - 2*q2) -     4*g*l1**3*l2*l3**2*m2**2*m3**2*np.sin(3*q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m2*m3**3*np.sin(3*q1 - 2*q2) +     8*l1*l3**2*m2*m3*p1*p2*np.sin(q1 - q2) + 4*l1*l3**2*m3**2*p1*p2*np.sin(q1 - q2) +     4*l1**2*l2*m2**2*p3**2*np.sin(2*(q1 - q2)) + 8*l1**2*l2*m2*m3*p3**2*np.sin(2*(q1 - q2)) +     4*l1**2*l2*m3**2*p3**2*np.sin(2*(q1 - q2)) - g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(2*q1 - q2) -     2*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(2*q1 - q2) - g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(2*q1 - q2) -     4*g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(q2) - 2*g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(q2) -     6*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q2) - 4*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(q2) -     2*g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q2) - 2*g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(q2) +     2*g*l1**2*l2*l3**3*m1*m3**3*np.sin(2*q2 - 3*q3) + g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q2 - 2*q3) +     g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q2 - 2*q3) + 4*l1*l3**2*m3**2*p1*p2*np.sin(q1 + q2 - 2*q3) +     2*g*l1**3*l2*l3**2*m1**2*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3**2*m1*m2*m3**2*     np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3**2*m1*m3**3*np.sin(q1 + 2*q2 - 2*q3) +     3*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(3*q2 - 2*q3) + 3*g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(3*q2 - 2*q3) -     2*g*l1**2*l2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 - q3) - 2*g*l1**2*l2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 - q3) - 4*l1**2*l3*m2*m3*p2*p3*np.sin(2*q1 - q2 - q3) -     4*l1**2*l3*m3**2*p2*p3*np.sin(2*q1 - q2 - q3) - 8*l1**2*l3*m1*m3*p2*p3*np.sin(q2 - q3) -     4*l1**2*l3*m2*m3*p2*p3*np.sin(q2 - q3) - 4*l1**2*l3*m3**2*p2*p3*np.sin(q2 - q3) -     4*l2*l3**2*m3**2*p1**2*np.sin(2*(q2 - q3)) + 2*g*l1**2*l2*l3**3*m1*m3**3*np.sin(2*q2 - q3) -     8*l1*l2*l3*m2*m3*p1*p3*np.sin(q1 - 2*q2 + q3) - 8*l1*l2*l3*m3**2*p1*p3*np.sin(q1 - 2*q2 + q3) -     2*g*l1**2*l2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 + q3) - 2*g*l1**2*l2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 + q3) - 2*g*l1**3*l2*l3**2*m1**2*m3**2*np.sin(q1 - 2*q2 + 2*q3) -     2*g*l1**3*l2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3**2*m1*m3**3*     np.sin(q1 - 2*q2 + 2*q3)))/(2*l1**2*l2**2*l3**2*m3*  (2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)        
-    dq[2] = (2*m1*(4*l2**2*l3**2*m2*m3*p1**2 + 2*l2**2*l3**2*m3**2*p1**2 + 4*l1**2*l3**2*m1*m3*p2**2 +     4*l1**2*l3**2*m2*m3*p2**2 + 2*l1**2*l3**2*m3**2*p2**2 + 4*l1**2*l2**2*m1*m2*p3**2 +     2*l1**2*l2**2*m2**2*p3**2 + 4*l1**2*l2**2*m1*m3*p3**2 + 4*l1**2*l2**2*m2*m3*p3**2 +     2*l1**2*l2**2*m3**2*p3**2 - 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) + g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) +     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) + 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) +     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) -     8*l1*l2*l3**2*m2*m3*p1*p2*np.cos(q1 - q2) - 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 - q2) -     2*l1**2*l2**2*m2**2*p3**2*np.cos(2*(q1 - q2)) - 4*l1**2*l2**2*m2*m3*p3**2*np.cos(2*(q1 - q2)) -     2*l1**2*l2**2*m3**2*p3**2*np.cos(2*(q1 - q2)) + g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) +     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) + g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) -     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) -     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) - 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) -     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) +     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) + g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) + 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) +     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) + g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) -     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) - 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) -     2*l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) + g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) +     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) + 4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) +     4*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) - 8*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) -     4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) - 4*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) -     2*l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) + g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) -     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) -     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) +     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) + 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3) +     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) + g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) + g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*np.sin(2*(q2 - q3)) +   l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (3*g*l1**2*l2**2*l3**2*m1*m3**2*np.sin(2*q2 - 3*q3) - 4*l1**2*l3*m3*p2**2*np.sin(2*(q1 - q3)) +     l2*(2*g*l1**2*l2**2*l3*m1*m3*(m2 + m3)*np.sin(q2 - 2*q3) + 8*l1*l3*m3*p1*p2*np.sin(q1 + q2 - 2*q3) +       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 + 2*q2 - 2*q3) +       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**2*l2**2*l3*m1*m2*m3*np.sin(3*q2 - 2*q3) +       2*g*l1**2*l2**2*l3*m1*m3**2*np.sin(3*q2 - 2*q3) - 4*l1*l2*m2*p1*p3*np.sin(q1 - q3) -       4*l1*l2*m3*p1*p3*np.sin(q1 - q3) + g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 - q3) +       g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 - q3) + 4*l1**2*m2*p2*p3*np.sin(2*q1 - q2 - q3) +       4*l1**2*m3*p2*p3*np.sin(2*q1 - q2 - q3) - 8*l1**2*m1*p2*p3*np.sin(q2 - q3) -       4*l1**2*m2*p2*p3*np.sin(q2 - q3) - 4*l1**2*m3*p2*p3*np.sin(q2 - q3) -       4*l2*l3*m3*p1**2*np.sin(2*(q2 - q3)) + g*l1**2*l2*l3**2*m1*m3**2*np.sin(2*q2 - q3) +       4*g*l1**2*l2*l3**2*m1*m2*m3*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2**2*m3*np.sin(q3) +       2*g*l1**2*l2*l3**2*m1*m3**2*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2*m3**2*np.sin(q3) -       4*l1*l2*m2*p1*p3*np.sin(q1 - 2*q2 + q3) - 4*l1*l2*m3*p1*p3*np.sin(q1 - 2*q2 + q3) -       g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 + q3) - g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 + q3) -       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 - 2*q2 + 2*q3) -       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 - 2*q2 + 2*q3))))/ (2*l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -     m1*m3*np.cos(2*(q2 - q3)))**2)
-    return dq
+    q1 += dp1_2 * h/2
+    q2 += dp20_2 * h/2
+    return np.array([q1, q2, 0,  p1, p2, 0])
 
 
-def triple_d_p_H(q, p):
-    dp = np.zeros(3)
-    (q1, q2, q3) = q
-    (p1, p2, p3) = p
-    l1, l2, l3 = lengths[0], lengths[1], lengths[2]
-    m1, m2, m3 = masses[0], masses[1], masses[2]
 
-    dp[0] = (2*(-(l1*l3*(2*m2 + m3)*p2*np.cos(q1 - q2)) + l1*l3*m3*p2*np.cos(q1 + q2 - 2*q3) +    l2*(2*l3*m2*p1 + l3*m3*p1 - l1*(m2 + m3)*p3*np.cos(q1 - q3) - l3*m3*p1*np.cos(2*(q2 - q3)) +      l1*m2*p3*np.cos(q1 - 2*q2 + q3) + l1*m3*p3*np.cos(q1 - 2*q2 + q3))))/ (l1**2*l2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -    m1*m3*np.cos(2*(q2 - q3))))
-    dp[1] = (2*(-(l2*l3*(2*m2 + m3)*p1*np.cos(q1 - q2)) + l2*l3*m3*p1*np.cos(q1 + q2 - 2*q3) +    l1*(2*l3*m1*p2 + 2*l3*m2*p2 + l3*m3*p2 - l3*m3*p2*np.cos(2*(q1 - q3)) +      l2*(m2 + m3)*p3*np.cos(2*q1 - q2 - q3) - 2*l2*m1*p3*np.cos(q2 - q3) - l2*m2*p3*np.cos(q2 - q3) -      l2*m3*p3*np.cos(q2 - q3))))/(l1*l2**2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 -    m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
-    dp[2] = (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 -    l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) +    l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) -    2*l1*l3*m1*m3*p2*np.cos(q2 - q3) - l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) +    l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3)))/ (l1*l2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -    m1*m3*np.cos(2*(q2 - q3)))) 
-    return dp
 
-def triple_pendulum_dH_1(u):
+def double_pendulum_eulero_simplettico_alt(u):
+    q1 = u[0][0]
+    q2 = u[0][1]
+    p1 = u[0][3]
+    p2 = u[0][4]
+    s = 1e-12
+    diff1 = 2*s
+    diff2 = 2*s
+    dq1 = 0
+    dq2 = 0
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    while (np.abs(diff1) > s or np.abs(diff2) > s):
+        a = lengths[0]*lengths[1]*(masses[1]*np.sin(q1 - q2)**2 + masses[0])
+        b = np.sin(q1 - q2)*((lengths[0]**2 * (p2-dq2)**2 * (masses[0] + masses[1]) + lengths[1]**2 *masses[1]*(p1 - dq1)**2) *np.cos(q1 - q2) - (p1-dq1)*(p2-dq2)*(2*lengths[0]*lengths[1]*(masses[0] + masses[1]) - a))/(a*a)
+
+        dq10 = (-b + g*lengths[0]*(masses[0] + masses[1])*np.sin(q1) )*h
+        dq20 = (b + g*lengths[1]*masses[1]*np.sin(q2))*h
+
+        diff1 = dq1 -  dq10
+        diff2 = dq2 - dq20
+        dq1 = dq10
+        dq2 = dq20
+
+    p1 -= dq1
+    p2 -= dq2
+
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    dp1 =  ((-2*lengths[1]**2  * masses[1]*(p1) + 2*lengths[0]*lengths[1]*masses[1]*(p2)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1]*(-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    dp2 = ((-2*lengths[0]**2 * (masses[0] + masses[1])*(p2) + 2*lengths[0]*lengths[1]*masses[1]*(p1)*np.cos(q1 - q2))/(lengths[0]**2 * lengths[1]**2 * masses[1] * (-2*masses[0] - masses[1] + masses[1]*np.cos(2*q1 - 2*q2))))
+    q1 = q1 + dp1 * h
+    q2 = q2 + dp2 * h
+    return np.array([q1, q2, 0,  p1, p2, 0])
+
+def triple_pendulum_dH(u):
     l1, l2, l3 = lengths[0], lengths[1], lengths[2]
     m1, m2, m3 = masses[0], masses[1], masses[2]
     q1 = u[0][0]
@@ -255,6 +227,49 @@ def triple_pendulum_dH_1(u):
     return np.array([q1, q2, q3,  p1, p2, p3])
 
 def triple_pendulum_stormer_verlet(u):
+    l1, l2, l3 = lengths[0], lengths[1], lengths[2]
+    m1, m2, m3 = masses[0], masses[1], masses[2]
+    q1 = u[0][0]
+    q2 = u[0][1]
+    q3 = u[0][2]
+    p1 = u[0][3]
+    p2 = u[0][4]
+    p3 = u[0][5]
+    s = 1e-12
+    diff1 = 2*s
+    diff2 = 2*s
+    diff3 = 2*s
+    dq1 = 0
+    dq2 = 0
+    dq3 = 0
+# implicito p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n )
+    while (np.abs(diff1) > s or np.abs(diff2) > s or np.abs(diff3) > s):
+
+        dq10 = h*(2*m2*(m2 + m3)*(-4*l2**2*l3**2*m2*m3*(p1-dq1)**2 - 2*l2**2*l3**2*m3**2*(p1-dq1)**2 - 4*l1**2*l3**2*m1*m3*(p2-dq2)**2 -     4*l1**2*l3**2*m2*m3*(p2-dq2)**2 - 2*l1**2*l3**2*m3**2*(p2-dq2)**2 - 4*l1**2*l2**2*m1*m2*(p3-dq3)**2 -    2*l1**2*l2**2*m2**2*(p3-dq3)**2 - 4*l1**2*l2**2*m1*m3*(p3-dq3)**2 - 4*l1**2*l2**2*m2*m3*(p3-dq3)**2 -     2*l1**2*l2**2*m3**2*(p3-dq3)**2 + 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) - g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) -     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) - 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) -     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) +     8*l1*l2*l3**2*m2*m3*(p1-dq1)*(p2-dq2)*np.cos(q1 - q2) + 4*l1*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.cos(q1 - q2) +     2*l1**2*l2**2*m2**2*(p3-dq3)**2*np.cos(2*(q1 - q2)) + 4*l1**2*l2**2*m2*m3*(p3-dq3)**2*np.cos(2*(q1 - q2)) +     2*l1**2*l2**2*m3**2*(p3-dq3)**2*np.cos(2*(q1 - q2)) - g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) -     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) - g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) +     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) +     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) + 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) +     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) -     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) - g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) - 4*l1*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.cos(q1 + q2 - 2*q3) -     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) - g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) +     4*l1*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.cos(q1 - q3) + 4*l1*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.cos(q1 - q3) +     2*l1**2*l3**2*m3**2*(p2-dq2)**2*np.cos(2*(q1 - q3)) - g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) -     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) - 4*l1**2*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.cos(2*q1 - q2 - q3) -     4*l1**2*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.cos(2*q1 - q2 - q3) + 8*l1**2*l2*l3*m1*m3*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) +     4*l1**2*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) + 4*l1**2*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) +     2*l2**2*l3**2*m3**2*(p1-dq1)**2*np.cos(2*(q2 - q3)) - g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) +     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) +     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) -     4*l1*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.cos(q1 - 2*q2 + q3) - 4*l1*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.cos(q1 - 2*q2 + q3) -     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) - g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) - g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*np.sin(2*(q1 - q2)) -   l1*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (-2*g*l1**2*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) + m1*(3*m2**2 + 4*m2*m3 + m3**2))*     np.sin(q1) + 2*g*l1*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.sin(2*q1 - 3*q2) +     g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(q1 - 2*q2) + g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(q1 - 2*q2) +     g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2) + 2*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(q1 - 2*q2) +     g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(q1 - 2*q2) + 3*g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(3*q1 - 2*q2) +     3*g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(3*q1 - 2*q2) + 3*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(3*q1 - 2*q2) +     6*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(3*q1 - 2*q2) + 3*g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(3*q1 - 2*q2) -     8*l2*l3**2*m2*m3*(p1-dq1)*(p2-dq2)*np.sin(q1 - q2) - 4*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.sin(q1 - q2) -     4*l1*l2**2*m2**2*(p3-dq3)**2*np.sin(2*(q1 - q2)) - 8*l1*l2**2*m2*m3*(p3-dq3)**2*np.sin(2*(q1 - q2)) -     4*l1*l2**2*m3**2*(p3-dq3)**2*np.sin(2*(q1 - q2)) + 2*g*l1*l2**3*l3**2*m2**3*m3*np.sin(2*q1 - q2) +     4*g*l1*l2**3*l3**2*m2**2*m3**2*np.sin(2*q1 - q2) + 2*g*l1*l2**3*l3**2*m2*m3**3*np.sin(2*q1 - q2) +     4*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.sin(q1 + q2 - 2*q3) + g*l1**2*l2**2*l3**2*m1**2*m3**2*np.sin(q1 + 2*q2 - 2*q3) +     g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q1 + 2*q2 - 2*q3) + g*l1**2*l2**2*l3**2*m1*m3**3*     np.sin(q1 + 2*q2 - 2*q3) - 4*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.sin(q1 - q3) -     4*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.sin(q1 - q3) - 4*l1*l3**2*m3**2*(p2-dq2)**2*np.sin(2*(q1 - q3)) +     2*g*l1*l2**2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 - q3) + 2*g*l1*l2**2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 - q3) + 8*l1*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.sin(2*q1 - q2 - q3) +     8*l1*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.sin(2*q1 - q2 - q3) + 4*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.sin(q1 - 2*q2 + q3) +     4*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.sin(q1 - 2*q2 + q3) + 2*g*l1*l2**2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 + q3) +     2*g*l1*l2**2*l3**3*m2*m3**3*np.sin(2*q1 - 2*q2 + q3) + g*l1**2*l2**2*l3**2*m1**2*m3**2*     np.sin(q1 - 2*q2 + 2*q3) + g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2 + 2*q3) +     g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q1 - 2*q2 + 2*q3)))/ (2*l1**2*l2**2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -     m1*m3*np.cos(2*(q2 - q3)))**2)        
+
+
+        dq20 = h*((-4*l2**2*l3**2*m2*m3*(p1-dq1)**2 - 2*l2**2*l3**2*m3**2*(p1-dq1)**2 - 4*l1**2*l3**2*m1*m3*(p2-dq2)**2 -     4*l1**2*l3**2*m2*m3*(p2-dq2)**2 - 2*l1**2*l3**2*m3**2*(p2-dq2)**2 - 4*l1**2*l2**2*m1*m2*(p3-dq3)**2 -     2*l1**2*l2**2*m2**2*(p3-dq3)**2 - 4*l1**2*l2**2*m1*m3*(p3-dq3)**2 - 4*l1**2*l2**2*m2*m3*(p3-dq3)**2 -     2*l1**2*l2**2*m3**2*(p3-dq3)**2 + 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) - g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) -     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) - 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) -     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) +     8*l1*l2*l3**2*m2*m3*(p1-dq1)*(p2-dq2)*np.cos(q1 - q2) + 4*l1*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.cos(q1 - q2) +     2*l1**2*l2**2*m2**2*(p3-dq3)**2*np.cos(2*(q1 - q2)) + 4*l1**2*l2**2*m2*m3*(p3-dq3)**2*np.cos(2*(q1 - q2)) +     2*l1**2*l2**2*m3**2*(p3-dq3)**2*np.cos(2*(q1 - q2)) - g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) -     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) - g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) +     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) +     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) + 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) +     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) -     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) - g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) - 4*l1*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.cos(q1 + q2 - 2*q3) -     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) - g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) +     4*l1*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.cos(q1 - q3) + 4*l1*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.cos(q1 - q3) +     2*l1**2*l3**2*m3**2*(p2-dq2)**2*np.cos(2*(q1 - q3)) - g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) -     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) - 4*l1**2*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.cos(2*q1 - q2 - q3) -     4*l1**2*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.cos(2*q1 - q2 - q3) + 8*l1**2*l2*l3*m1*m3*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) +     4*l1**2*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) + 4*l1**2*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) +     2*l2**2*l3**2*m3**2*(p1-dq1)**2*np.cos(2*(q2 - q3)) - g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) +     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) +     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) -     4*l1*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.cos(q1 - 2*q2 + q3) - 4*l1*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.cos(q1 - 2*q2 + q3) -     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) - g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) - g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*(-2*m2*(m2 + m3)*np.sin(2*(q1 - q2)) + 2*m1*m3*np.sin(2*(q2 - q3))) -   l2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (-3*g*l1**2*l2**2*l3**2*m2*m3*(m2 + m3)**2*np.sin(2*q1 - 3*q2) - 2*g*l1**3*l2*l3**2*m2*m3*(m2 + m3)*     (m1 + m2 + m3)*np.sin(q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m1*m2**2*m3*np.sin(3*q1 - 2*q2) -     2*g*l1**3*l2*l3**2*m2**3*m3*np.sin(3*q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m1*m2*m3**2*np.sin(3*q1 - 2*q2) -     4*g*l1**3*l2*l3**2*m2**2*m3**2*np.sin(3*q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m2*m3**3*np.sin(3*q1 - 2*q2) +     8*l1*l3**2*m2*m3*(p1-dq1)*(p2-dq2)*np.sin(q1 - q2) + 4*l1*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.sin(q1 - q2) +     4*l1**2*l2*m2**2*(p3-dq3)**2*np.sin(2*(q1 - q2)) + 8*l1**2*l2*m2*m3*(p3-dq3)**2*np.sin(2*(q1 - q2)) +     4*l1**2*l2*m3**2*(p3-dq3)**2*np.sin(2*(q1 - q2)) - g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(2*q1 - q2) -     2*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(2*q1 - q2) - g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(2*q1 - q2) -     4*g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(q2) - 2*g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(q2) -     6*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q2) - 4*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(q2) -     2*g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q2) - 2*g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(q2) +     2*g*l1**2*l2*l3**3*m1*m3**3*np.sin(2*q2 - 3*q3) + g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q2 - 2*q3) +     g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q2 - 2*q3) + 4*l1*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.sin(q1 + q2 - 2*q3) +     2*g*l1**3*l2*l3**2*m1**2*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3**2*m1*m2*m3**2*     np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3**2*m1*m3**3*np.sin(q1 + 2*q2 - 2*q3) +     3*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(3*q2 - 2*q3) + 3*g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(3*q2 - 2*q3) -     2*g*l1**2*l2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 - q3) - 2*g*l1**2*l2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 - q3) - 4*l1**2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.sin(2*q1 - q2 - q3) -     4*l1**2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.sin(2*q1 - q2 - q3) - 8*l1**2*l3*m1*m3*(p2-dq2)*(p3-dq3)*np.sin(q2 - q3) -     4*l1**2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.sin(q2 - q3) - 4*l1**2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.sin(q2 - q3) -     4*l2*l3**2*m3**2*(p1-dq1)**2*np.sin(2*(q2 - q3)) + 2*g*l1**2*l2*l3**3*m1*m3**3*np.sin(2*q2 - q3) -     8*l1*l2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.sin(q1 - 2*q2 + q3) - 8*l1*l2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.sin(q1 - 2*q2 + q3) -     2*g*l1**2*l2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 + q3) - 2*g*l1**2*l2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 + q3) - 2*g*l1**3*l2*l3**2*m1**2*m3**2*np.sin(q1 - 2*q2 + 2*q3) -     2*g*l1**3*l2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3**2*m1*m3**3*     np.sin(q1 - 2*q2 + 2*q3)))/(2*l1**2*l2**2*l3**2*m3*  (2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)        
+
+
+        dq30 = h*(2*m1*(4*l2**2*l3**2*m2*m3*(p1-dq1)**2 + 2*l2**2*l3**2*m3**2*(p1-dq1)**2 + 4*l1**2*l3**2*m1*m3*(p2-dq2)**2 +     4*l1**2*l3**2*m2*m3*(p2-dq2)**2 + 2*l1**2*l3**2*m3**2*(p2-dq2)**2 + 4*l1**2*l2**2*m1*m2*(p3-dq3)**2 +     2*l1**2*l2**2*m2**2*(p3-dq3)**2 + 4*l1**2*l2**2*m1*m3*(p3-dq3)**2 + 4*l1**2*l2**2*m2*m3*(p3-dq3)**2 +     2*l1**2*l2**2*m3**2*(p3-dq3)**2 - 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) + g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) +     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) + 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) +     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) -     8*l1*l2*l3**2*m2*m3*(p1-dq1)*(p2-dq2)*np.cos(q1 - q2) - 4*l1*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.cos(q1 - q2) -     2*l1**2*l2**2*m2**2*(p3-dq3)**2*np.cos(2*(q1 - q2)) - 4*l1**2*l2**2*m2*m3*(p3-dq3)**2*np.cos(2*(q1 - q2)) -     2*l1**2*l2**2*m3**2*(p3-dq3)**2*np.cos(2*(q1 - q2)) + g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) +     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) + g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) -     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) -     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) - 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) -     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) +     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) + g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) + 4*l1*l2*l3**2*m3**2*(p1-dq1)*(p2-dq2)*np.cos(q1 + q2 - 2*q3) +     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) + g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) -     4*l1*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.cos(q1 - q3) - 4*l1*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.cos(q1 - q3) -     2*l1**2*l3**2*m3**2*(p2-dq2)**2*np.cos(2*(q1 - q3)) + g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) +     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) + 4*l1**2*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.cos(2*q1 - q2 - q3) +     4*l1**2*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.cos(2*q1 - q2 - q3) - 8*l1**2*l2*l3*m1*m3*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) -     4*l1**2*l2*l3*m2*m3*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) - 4*l1**2*l2*l3*m3**2*(p2-dq2)*(p3-dq3)*np.cos(q2 - q3) -     2*l2**2*l3**2*m3**2*(p1-dq1)**2*np.cos(2*(q2 - q3)) + g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) -     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) -     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) +     4*l1*l2**2*l3*m2*m3*(p1-dq1)*(p3-dq3)*np.cos(q1 - 2*q2 + q3) + 4*l1*l2**2*l3*m3**2*(p1-dq1)*(p3-dq3)*np.cos(q1 - 2*q2 + q3) +     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) + g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) + g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*np.sin(2*(q2 - q3)) +   l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (3*g*l1**2*l2**2*l3**2*m1*m3**2*np.sin(2*q2 - 3*q3) - 4*l1**2*l3*m3*(p2-dq2)**2*np.sin(2*(q1 - q3)) +     l2*(2*g*l1**2*l2**2*l3*m1*m3*(m2 + m3)*np.sin(q2 - 2*q3) + 8*l1*l3*m3*(p1-dq1)*(p2-dq2)*np.sin(q1 + q2 - 2*q3) +       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 + 2*q2 - 2*q3) +       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**2*l2**2*l3*m1*m2*m3*np.sin(3*q2 - 2*q3) +       2*g*l1**2*l2**2*l3*m1*m3**2*np.sin(3*q2 - 2*q3) - 4*l1*l2*m2*(p1-dq1)*(p3-dq3)*np.sin(q1 - q3) -       4*l1*l2*m3*(p1-dq1)*(p3-dq3)*np.sin(q1 - q3) + g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 - q3) +       g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 - q3) + 4*l1**2*m2*(p2-dq2)*(p3-dq3)*np.sin(2*q1 - q2 - q3) +       4*l1**2*m3*(p2-dq2)*(p3-dq3)*np.sin(2*q1 - q2 - q3) - 8*l1**2*m1*(p2-dq2)*(p3-dq3)*np.sin(q2 - q3) -       4*l1**2*m2*(p2-dq2)*(p3-dq3)*np.sin(q2 - q3) - 4*l1**2*m3*(p2-dq2)*(p3-dq3)*np.sin(q2 - q3) -       4*l2*l3*m3*(p1-dq1)**2*np.sin(2*(q2 - q3)) + g*l1**2*l2*l3**2*m1*m3**2*np.sin(2*q2 - q3) +       4*g*l1**2*l2*l3**2*m1*m2*m3*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2**2*m3*np.sin(q3) +       2*g*l1**2*l2*l3**2*m1*m3**2*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2*m3**2*np.sin(q3) -       4*l1*l2*m2*(p1-dq1)*(p3-dq3)*np.sin(q1 - 2*q2 + q3) - 4*l1*l2*m3*(p1-dq1)*(p3-dq3)*np.sin(q1 - 2*q2 + q3) -       g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 + q3) - g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 + q3) -       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 - 2*q2 + 2*q3) -       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 - 2*q2 + 2*q3))))/ (2*l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -     m1*m3*np.cos(2*(q2 - q3)))**2)
+        diff1 = dq1 -  dq10
+        diff2 = dq2 - dq20
+        diff3 = dq3 - dq30
+        dq1 = dq10
+        dq2 = dq20
+        dq3 = dq30
+
+    p1 -= dq1
+    p2 -= dq2
+    p3 -= dq3
+
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    dp1 =  (2*(-(l1*l3*(2*m2 + m3)*p2*np.cos(q1 - q2)) + l1*l3*m3*p2*np.cos(q1 + q2 - 2*q3) +    l2*(2*l3*m2*p1 + l3*m3*p1 - l1*(m2 + m3)*p3*np.cos(q1 - q3) - l3*m3*p1*np.cos(2*(q2 - q3)) +      l1*m2*p3*np.cos(q1 - 2*q2 + q3) + l1*m3*p3*np.cos(q1 - 2*q2 + q3))))/ (l1**2*l2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -    m1*m3*np.cos(2*(q2 - q3))))
+    dp2 = (2*(-(l2*l3*(2*m2 + m3)*p1*np.cos(q1 - q2)) + l2*l3*m3*p1*np.cos(q1 + q2 - 2*q3) +    l1*(2*l3*m1*p2 + 2*l3*m2*p2 + l3*m3*p2 - l3*m3*p2*np.cos(2*(q1 - q3)) +      l2*(m2 + m3)*p3*np.cos(2*q1 - q2 - q3) - 2*l2*m1*p3*np.cos(q2 - q3) - l2*m2*p3*np.cos(q2 - q3) -      l2*m3*p3*np.cos(q2 - q3))))/(l1*l2**2*l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 -    m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3))))
+    dp3 =  (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 -    l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) +    l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) -    2*l1*l3*m1*m3*p2*np.cos(q2 - q3) - l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) +    l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3)))/ (l1*l2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -    m1*m3*np.cos(2*(q2 - q3))))
+    q1 = q1 + dp1 * h
+    q2 = q2 + dp2 * h
+    q3 = q3 + dp3 * h
     return np.array([q1, q2, q3,  p1, p2, p3])
 
 
