@@ -76,6 +76,17 @@ def stormer_verlet(f, u):
     u[0][3:6] = p
     return u
 
+def two_step_adams_bashforth(f, u):
+    global t
+    # multistep, need a second point
+    if t == 0:
+        u[1] = runge_kutta4(f,u)[0]
+        t+=h
+    temp = u[1] + (3./2)*h*f(u[1], t) - (1./2)*h*f(u[0], t-h)
+    u[0] = u[1]
+    u[1] = copy.deepcopy(temp)
+    return u
+
 
 def single_d_q_H(q, p):
     dq = np.zeros(3)
@@ -752,7 +763,7 @@ framepersec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
-d_f_int = {1:forward_euler, 2:backward_euler, 3:semi_implicit_euler, 4: symplectic_euler, 5:stormer_verlet,  6: velocity_verlet, 8: crank_nicolson, 9: runge_kutta4,}
+d_f_int = {1:forward_euler, 2:backward_euler, 3:semi_implicit_euler, 4: symplectic_euler, 5:stormer_verlet,  6: velocity_verlet, 7: two_step_adams_bashforth, 8: crank_nicolson, 9: runge_kutta4,}
 n_i =  input("Method of Numerical integration? - N for pendulum \n  [1] Forward Euler - 1, 2, 3 \n   2 Backward Euler - 1, 2, 3 \n   3 Semi-Implicit Euler - 1 \n   4 Symplectic Euler - 1, 2, 3 \n   5 Stormer Verlet - 1, 2, 3  \n   6 Velocity Verlet - 1 \n   7 Two-step Adams-Bashforth \n   8 Crank Nicolson - 1, 2, 3 \n   9 Runge Kutta 4 - 1, 2, 3 \n   ")
 
 if (n_i == ""): f_int = runge_kutta4
