@@ -38,22 +38,6 @@ def implicito(f, q, p, h_inc,  s, p_or_q):
         count+=1
     return d
 
-def velocity_verlet_implicito(f, u):
-    s = 1e-14 # valore di soglia per risolvere iterativamente equazione autoconsistente
-    diff = [2*s, 2*s, 2*s]
-    u0 = copy.deepcopy(u[0])
-    y_1 = copy.deepcopy(u[0])
-    y_1[0:3] = u0[0:3] + u0[3:6]*h  + f(u0, t)[3:6]*h*h/2 
-    y_1[3:6] = u0[3:6] + f(u0, t)[3:6]*h/2
-    add = np.zeros(6)
-    while (np.abs(diff[0]) > s or np.abs(diff[1]) > s or np.abs(diff[2]) > s):
-        diff = add[3:6]
-        add =  f(y_1 + add, t)*h/2
-        diff -= add[3:6]
-    y_1[3:6]+=add[3:6]
-    u[0] = copy.deepcopy(y_1)
-    return u
-
 def velocity_verlet(f, u):
     y_1 = copy.deepcopy(u[0])
     y_1[0:3] = u[0][0:3] + u[0][3:6]*h  + f(u[0], t)[3:6]*h*h/2
@@ -61,7 +45,7 @@ def velocity_verlet(f, u):
     u[0] = copy.deepcopy(y_1)
     return u
 
-def eulero_simplettico(f, u):
+def symplectic_euler(f, u):
     f_q = {f_single: single_d_q_H, f_double: double_d_q_H, f_triple: triple_d_q_H}
     f_p = {f_single: single_d_p_H, f_double: double_d_p_H, f_triple: triple_d_p_H}
     q = u[0][0:3]
@@ -163,11 +147,11 @@ def runge_kutta4(f, u):
     u[0] = (u[0] + (k1 + 2*k2 + 2*k3 + k4)/6.0)
     return u
 
-def eulero_esplicito(f, u):
+def forward_euler(f, u):
     u[0] = u[0] + f(u[0] , t)*h
     return u
 
-def eulero_implicito(f, u):
+def backward_euler(f, u):
     s = 1e-12
     c = np.zeros(6)
     diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
@@ -178,7 +162,7 @@ def eulero_implicito(f, u):
     u[0] += c        
     return u
             
-def trapezoide_implicito(f, u):
+def crank_nicolson(f, u):
     s = 1e-12
     c = np.zeros(6)
     diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
@@ -190,7 +174,7 @@ def trapezoide_implicito(f, u):
     u[0] += c        
     return u
  
-def eulero_semi_implicito(f, u):
+def semi_implicit_euler(f, u):
     u[0][3:6] += f(u[0] , t)[3:6]*h
     u[0][0:3] += f(u[0] , t)[0:3]*h
     return u
@@ -768,8 +752,8 @@ framepersec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
-d_f_int = {1: runge_kutta4, 2: velocity_verlet, 3: trapezoide_implicito, 4:eulero_implicito, 5:eulero_semi_implicito, 6:eulero_esplicito, 7:stormer_verlet, 8:velocity_verlet_implicito, 9: eulero_simplettico}
-n_i =  input("Method of Numerical integration? - N for pendulum \n  [1] Runge Kutta 4 - 1, 2, 3  \n  2 Velocity Verlet - 1 \n  3 Trapezoid implicit - 1, 2, 3 \n  4 Implicit Eulero - 1 \n  5 Semi-Implicit Eulero - 1  \n  6 Explicit Eulero - 1 \n  7 Stormer Verlet - 1, 2, 3 \n  8 Implicit Velocity Verlet (?) \n  9 Eulero Simplettico - 1, 2, 3 \n   ")
+d_f_int = {1:forward_euler, 2:backward_euler, 3:semi_implicit_euler, 4: symplectic_euler, 5:stormer_verlet,  6: velocity_verlet, 8: crank_nicolson, 9: runge_kutta4,}
+n_i =  input("Method of Numerical integration? - N for pendulum \n  [1] Forward Euler - 1, 2, 3 \n   2 Backward Euler - 1, 2, 3 \n   3 Semi-Implicit Euler - 1 \n   4 Symplectic Euler - 1, 2, 3 \n   5 Stormer Verlet - 1, 2, 3  \n   6 Velocity Verlet - 1 \n   7 Two-step Adams-Bashforth \n   8 Crank Nicolson - 1, 2, 3 \n   9 Runge Kutta 4 - 1, 2, 3 \n   ")
 
 if (n_i == ""): f_int = runge_kutta4
 else: f_int = d_f_int[int(n_i)]
