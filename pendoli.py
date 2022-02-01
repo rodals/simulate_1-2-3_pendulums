@@ -11,7 +11,7 @@ def running():
     print(f"\n Running {dict_func[mode].__name__} {n_pend_string[n_p]} pendulum propagated with {f_int.__name__}")
 
 def percentage(i):
-    print(f"  {int(100*i/min(framepersec * tempo_simulazione, int(tempo_simulazione/h)))} % Processing  ", end="\r") 
+    print(f"  {int(100*i/min(frameforsec * time_simulation, int(time_simulation/h)))} % Processing  ", end="\r") 
     
 def bye():
     print("Non valid input. Bye")
@@ -25,7 +25,7 @@ def angle_mod(theta):
         theta-=(2*np.pi)
     return theta
 
-def implicito(f, q, p, h_inc,  s, p_or_q):
+def implicit(f, q, p, h_inc,  s, p_or_q):
     diff = np.array([2*s, 2*s, 2*s]) 
     d = np.zeros(3)
     count = 0
@@ -52,7 +52,7 @@ def symplectic_euler(f, u):
     p = u[0][3:6]
     s = 1e-12
 # if non separable implicit, otherwise it automatically exit:  p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n ) 
-    p  -= implicito(f_q[f], q, p, h, s, "p")
+    p  -= implicit(f_q[f], q, p, h, s, "p")
 #  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
     q  += f_p[f]( q, p)*h
     u[0][0:3] = q
@@ -65,10 +65,10 @@ def stormer_verlet(f, u):
     q = u[0][0:3]
     p = u[0][3:6]
     s = 1e-12
-    p  -= implicito(f_q[f], q, p, h/2, s, "p")
+    p  -= implicit(f_q[f], q, p, h/2, s, "p")
 
     dq1  = f_p[f]( q, p)*h/2
-    q  += implicito(f_p[f], q, p, h/2, s, "q")
+    q  += implicit(f_p[f], q, p, h/2, s, "q")
     q += dq1
 
     p -= f_q[f](q, p)*h/2
@@ -260,22 +260,22 @@ def get_xy_velocity(p):
 	dy3 = -lengths[2] * np.sin(p[2])*p[5] + dy2
 	return (dx1, dx2, dx3), (dy1, dy2, dy3)
 
-def energia_cinetica(p, n):
+def kinetic_energy(p, n):
     dx, dy = get_xy_velocity(p)
     ek = np.zeros(n)
     for i in range(0, n):
         ek[i] += (dx[i]**2 + dy[i]**2) / 2
     return ek
 
-def energia_potenziale(p, n):
+def potential_energy(p, n):
     x, y = get_xy_coords(p)
     ep = np.zeros(n)
     for i in range(0, n):
         ep[i] = g*(masses[0]*y[i]) + g*(masses[0]*sum(lengths[0:i+1]))
     return ep
 
-def energia_totale(p, n):
-	return energia_cinetica(p, n) + energia_potenziale(p, n) 
+def total_energy(p, n):
+	return kinetic_energy(p, n) + potential_energy(p, n) 
     
 def xy_to_line(x, y, n, n_pend):
     list_line = np.zeros((n, n_pend, 2))
@@ -298,7 +298,7 @@ def xy_to_segment(x, y, n, n_pend):
     return segments
 
 def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
-    global t, lengths, masses
+    global t #, lengths, masses
     t = 0
 
     # mode 0 : thetas mode 1: omegas  mode 2: 
@@ -307,7 +307,8 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
     perturbation_th_omega = np.zeros(6)
     perturbation_masses = np.zeros(3)
     perturbation_lengths = np.zeros(3)
-    frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h))
+    perturbation_gravity = 0.
+    frames = int(min(frameforsec * time_simulation, time_simulation/h))
     track_segments_plot = np.zeros((n_pend, frames, 2))
 
     if n_mode == 1:
@@ -318,6 +319,8 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         perturbation_masses =  np.array([perturbation*1 , 0, 0]) 
     elif n_mode == 4:
         perturbation_lengths += perturbation
+    elif n_mode == 5:
+        perturbation_gravity += perturbation
          
     u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
     um1= np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
@@ -359,19 +362,22 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         return pends, points, track_pends, time_text
 
     def animate(i):
-        global t, lengths, masses
+        global t, lengths, masses, g
         nonlocal u0_pend, um1_pend
         position = np.zeros((n, 2, n_pend))
-        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
+        fps_jump = max(int((1/h)/frameforsec), 1) # how much should i jump writing frames to get at most frameforsec photos in a second
+
         for x in range(fps_jump):
             for o in range(n_pend):
                 (u0_pend[o], um1_pend[o]) = f(f_n[n], [u0_pend[o], um1_pend[o]])
                 lengths += perturbation_lengths
                 masses  += perturbation_masses
+                g       += perturbation_gravity
 
             t+=h
             masses  -= perturbation_masses*n_pend
             lengths -= perturbation_lengths*n_pend
+            g       -= perturbation_gravity*n_pend
 
         x_pend, y_pend = get_xy_coords(u0_pend[:,:3].T)*lengths_rapp
         track_segments_plot[0:n_pend:1][:,i][:,0] = x_pend[n-1] 
@@ -386,7 +392,7 @@ def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
         percentage(i)
         return pends, points, track_pends, time_text
 
-    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
     anim.save(output)
     print(" Done             ")
     return anim
@@ -450,7 +456,7 @@ def animate_pendulum_simple(f, output, n):
         global t
         nonlocal u
         tail = 100000
-        fps_jump = max(int((1/h)/framepersec), 1) # ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
+        fps_jump = max(int((1/h)/frameforsec), 1) 
         for x in range(fps_jump):
             u = f(f_n[n], u)
             t+=h
@@ -463,7 +469,7 @@ def animate_pendulum_simple(f, output, n):
             y_plot[k].append(y[k])
 
         t_plot.append(t)
-        ene_tot = energia_totale(u0, n) 
+        ene_tot = total_energy(u0, n) 
         en_tot.append(np.sum(ene_tot))
 
 
@@ -483,7 +489,7 @@ def animate_pendulum_simple(f, output, n):
         return (ax_pend_lines[0]+ ax_pend_lines[1]+ ax_pend_lines[2] + ax_pend_lines[3] + ax_pend_lines[4])
 
     
-    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
     anim.save(output)
     print(" Done             ")
     return anim
@@ -518,8 +524,8 @@ def animate_pendulum_detailed(f, output, n):
             ]
 
     tails = [10, 10, 10]
-# ogni quanto devo saltare di scrivere i frame per ottenere al piu' framepersec  foto in un secondo
-    fps_jump = max(int((1/h)/framepersec), 1) 
+# how much should i jump writing frames to get at most frameforsec photos in a second
+    fps_jump = max(int((1/h)/frameforsec), 1) 
 
 # variables to plot
     t_plot = []
@@ -590,7 +596,7 @@ def animate_pendulum_detailed(f, output, n):
     axes_v[position['position_x']].xaxis.set_label_position("top")
     axes_v[position['position_x']].set_xlabel(r"$x (m)$")
     axes_v[position['position_x']].set_ylabel(r"$t (s)$")
-    axes_v[position['position_x']].set_ylim(0, tempo_simulazione)
+    axes_v[position['position_x']].set_ylim(0, time_simulation)
 
     axes_v[position['position_y']].sharey(axes_v[position['motion']])
     axes_v[position['position_y']].set_title(r"$t (s)$ vs $y (m)$")
@@ -598,7 +604,7 @@ def animate_pendulum_detailed(f, output, n):
     axes_v[position['position_y']].set_ylabel(r"$y (m)$")
     axes_v[position['position_y']].xaxis.tick_top()
     axes_v[position['position_y']].xaxis.set_label_position("top")
-    axes_v[position['position_y']].set_xlim(0, tempo_simulazione)
+    axes_v[position['position_y']].set_xlim(0, time_simulation)
 
     axes_v[position['phase']].set_title(r"$\theta$ vs $\dot{\theta}$")
     axes_v[position['phase']].set_xlabel(r"$\theta (rad)$")
@@ -613,14 +619,14 @@ def animate_pendulum_detailed(f, output, n):
 
     axes_v[position['energy_tot']].set_title("Total Energy", pad=20)
     axes_v[position['energy_tot']].ticklabel_format(useMathText=True)
-    axes_v[position['energy_tot']].set_xlim(0, tempo_simulazione)
+    axes_v[position['energy_tot']].set_xlim(0, time_simulation)
     axes_v[position['energy_tot']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_tot']].yaxis.tick_right()
     axes_v[position['energy_tot']].yaxis.set_label_position("right")
     axes_v[position['energy_tot']].legend()
 
     axes_v[position['energy_k_p']].set_title(r"$E_k$,  $E_p$, $E_{tot}$")
-    axes_v[position['energy_k_p']].set_xlim(0, tempo_simulazione)
+    axes_v[position['energy_k_p']].set_xlim(0, time_simulation)
     axes_v[position['energy_k_p']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_k_p']].set_xlabel(r"$t (s)$")
     axes_v[position['energy_k_p']].yaxis.tick_right()
@@ -634,7 +640,6 @@ def animate_pendulum_detailed(f, output, n):
         for p in range(n):
             ax_pend_lines[0][p].set_data([], [])
             ax_pend_lines[1][p].set_data([], [])
-#            ax_pend_lines[2].set_data([], [], [])
         complete_motion.set_data([], [])
         complete_motion_point.set_data([], [])
 
@@ -656,7 +661,7 @@ def animate_pendulum_detailed(f, output, n):
         x, y = get_xy_coords(u0)
         vx, vy = get_xy_velocity(u0)
         theta, r = get_polar_coords(u0)
-        ene_tot = energia_totale(u0, n) 
+        ene_tot = total_energy(u0, n) 
         omega = u0[3:6]
 
         for k in range(n):
@@ -671,8 +676,8 @@ def animate_pendulum_detailed(f, output, n):
 
         t_plot.append(t)
         en_tot.append(np.sum(ene_tot))
-        en_k.append(np.sum(energia_cinetica(u0, n)))
-        en_p.append(np.sum(energia_potenziale(u0, n)))
+        en_k.append(np.sum(kinetic_energy(u0, n)))
+        en_p.append(np.sum(potential_energy(u0, n)))
 
 
 # line from the origin to the first mass
@@ -686,7 +691,6 @@ def animate_pendulum_detailed(f, output, n):
             pos_y[j].set_data(t_plot[::-1], y_plot[j][::-1])
             phase[j].set_data(theta_plot[j][::-1], omega_plot[j][::-1])
             ax_pend_lines[1][j].set_data(x_plot[j][i+1:max(1, i+1-tails[j]):-1], y_plot[j][i+1:max(1,i+1-tails[j]):-1])
-            #ax_pend_lines[2][j].set_data(theta_plot[j][::-1], r_plot[j][::-1])
         axes_v[position['polar']].clear()
         if (n == 3):
             axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], theta_plot[2][::-1], 'o-',color = color_tails[2],markersize = 2, markerfacecolor = marker_face[0],linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
@@ -697,7 +701,6 @@ def animate_pendulum_detailed(f, output, n):
         elif (n ==2 ):
             axes_v[position['polar']].plot(theta_plot[0][::-1], theta_plot[1][::-1], 'o-',color = 'xkcd:bright blue',markersize = 2, markerfacecolor = 'azure',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
             axes_v[position['polar']].plot(theta_plot[0][i], theta_plot[1][i], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',ls='', markevery=1, markeredgecolor = 'k', animated = True)
-#            axes_v[position['polar']].set(xlim=(-np.pi, np.pi), ylim=(-np.pi, np.pi))
             axes_v[position['polar']].set_xlabel(r"$\theta_1 (rad)$")
             axes_v[position['polar']].set_ylabel(r"$\theta_2 (rad)$")
             axes_v[position['polar']].yaxis.tick_right()
@@ -740,16 +743,15 @@ def animate_pendulum_detailed(f, output, n):
         return (ax_pend_lines[0]+ ax_pend_lines[1] + pos_x + pos_y + phase + energy + [time_text, energy_text])
 
     
-    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/framepersec, h*1000), frames = int(min(framepersec * tempo_simulazione, tempo_simulazione/h)), repeat = False, blit = True)
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
     anim.save(output)
     print(" Done             ")
 #    plt.show()
     return anim
 
 
-#dati iniziali di default
-# condizioni iniziali
-# angolo iniziale in gradi
+# default initial conditions
+# initial angle in grad 
 lengths  = np.array([1., 1., 1.])
 masses   = np.array([1., 1., 1.])
 grads0 = np.array([135, 135, 135])
@@ -758,20 +760,20 @@ omegas0_grad = np.zeros(3)
 omegas0  = omegas0_grad * 2 * np.pi / 360
 g = 9.81
 h = 0.001
-tempo_simulazione = 10
-framepersec = 30
+time_simulation = 10
+frameforsec = 30
 
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
 d_f_int = {1:forward_euler, 2:backward_euler, 3:semi_implicit_euler, 4: symplectic_euler, 5:stormer_verlet,  6: velocity_verlet, 7: two_step_adams_bashforth, 8: crank_nicolson, 9: runge_kutta4,}
-n_i =  input("Method of Numerical integration? - N for pendulum \n  [1] Forward Euler - 1, 2, 3 \n   2 Backward Euler - 1, 2, 3 \n   3 Semi-Implicit Euler - 1 \n   4 Symplectic Euler - 1, 2, 3 \n   5 Stormer Verlet - 1, 2, 3  \n   6 Velocity Verlet - 1 \n   7 Two-step Adams-Bashforth \n   8 Crank Nicolson - 1, 2, 3 \n   9 Runge Kutta 4 - 1, 2, 3 \n   ")
+n_i =  input("Method of Numerical integration? - N for pendulum \n  [1] Forward Euler - 1, 2, 3 \n   2 Backward Euler - 1, 2, 3 \n   3 Semi-Implicit Euler - 1 \n   4 Symplectic Euler - 1, 2, 3 \n   5 Stormer Verlet - 1, 2, 3  \n   6 Velocity Verlet - 1 \n   7 Two-step Adams-Bashforth - 1, 2, 3 \n   8 Crank Nicolson - 1, 2, 3 \n   9 Runge Kutta 4 - 1, 2, 3 \n   ")
 
 if (n_i == ""): f_int = runge_kutta4
 else: f_int = d_f_int[int(n_i)]
    
 n_p = 3
 
-y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = {grads0}grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {framepersec}s**-1 \n   time simulation = {tempo_simulazione}s \n   g = {g}m/s**2 \n").lower()
+y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = {grads0}grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {frameforsec}s**-1 \n   time simulation = {time_simulation}s \n   g = {g}m/s**2 \n").lower()
 if (y_n == "n"):
     n_p = (input("n pendula to simulate? [1, 2, [3]]  "))
     if( n_p in ["1", "2", "3"]):
@@ -804,19 +806,19 @@ if (y_n == "n"):
     if (step.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): h = float(step)
     elif (step): bye()
 
-    time = input(f"Time simulation [{tempo_simulazione}] s :   ")
-    if (time.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): tempo_simulazione = float(time)
+    time = input(f"Time simulation [{time_simulation}] s :   ")
+    if (time.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): time_simulation = float(time)
     elif (time): bye()
 
-    fps = input(f"Fps [{framepersec}] :  ")
-    if (fps.isdigit()): framepersec = int(fps)
+    fps = input(f"Fps [{frameforsec}] :  ")
+    if (fps.isdigit()): frameforsec = int(fps)
     elif (fps): bye()
  
 elif y_n != "y" and y_n:
         print("wrong input.")
         exit()
 
-dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 0: "nothing"}
+dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
 dict_func = { 1: animate_pendulum_simple,2: animate_pendulum_detailed, 3: the_butterfly_effect}
 perturb = 1e-4
 n_pend = 40
@@ -834,12 +836,12 @@ if mode == "1" or  mode =="2" or not mode:
 
 elif mode == "3": 
     mode = 3
-    n_mode =  input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths (visualization works only for same lengths pendulum) \n   0 Nothing \n  ")
+    n_mode =  input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths (visualization works only for same lengths pendulum) \n   5 Gravity \n   0 Nothing \n  ")
     if (n_mode.lstrip('-').isdigit()): n_mode = int(n_mode)
     elif (not n_mode): n_mode = 1
     else: bye()
 
-    s_perturb = input("Module of perturbation? [1e-4 grad | 1e-4 grad/s | 1e-4 Kg | 1e-4 m]   ")
+    s_perturb = input("Module of perturbation? [1e-4 grad | 1e-4 grad/s | 1e-4 Kg | 1e-4 m | 1e-4 m/s^2]   ")
     if (s_perturb.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): perturb = float(s_perturb)
     elif (s_perturb): bye()
     n_pends = input("Number of pendulums simulated? [40]")
