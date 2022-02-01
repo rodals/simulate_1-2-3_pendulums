@@ -7,42 +7,27 @@ from  time import perf_counter
 import matplotlib.animation as animation
 from matplotlib import collections
 
-def running():
-    print(f"\n Running {dict_func[mode].__name__} {n_pend_string[n_p]} pendulum propagated with {f_int.__name__}")
 
-def percentage(i):
-    print(f"  {int(100*i/min(frameforsec * time_simulation, int(time_simulation/h)))} % Processing  ", end="\r") 
-    
-def bye():
-    print("Non valid input. Bye")
-    exit()
+########## Methods for numerical integration ##########
 
-def angle_mod(theta):
-    while (theta < 0):
-        theta+=(2*np.pi)
-    theta = theta % (2*np.pi)
-    if theta > np.pi:
-        theta-=(2*np.pi)
-    return theta
+def forward_euler(f, u):
+    u[0] = u[0] + f(u[0] , t)*h
+    return u
 
-def implicit(f, q, p, h_inc,  s, p_or_q):
-    diff = np.array([2*s, 2*s, 2*s]) 
-    d = np.zeros(3)
-    count = 0
-    count_max = 500
-    while( (np.abs(diff) > s).any() and count < count_max):
-        if(p_or_q =="q"): d1 = f(q+d, p)*h_inc
-        elif(p_or_q =="p"):  d1 = f(q, p-d)*h_inc
-        diff = d1 -  d
-        d = copy.deepcopy(d1)
-        count+=1
-    return d
+def backward_euler(f, u):
+    s = 1e-12
+    c = np.zeros(6)
+    diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
+    while (np.abs(diff)>s).any():
+        diff = c
+        c =  f(u[0] + c, t+h)*h
+        diff -= c
+    u[0] += c        
+    return u
 
-def velocity_verlet(f, u):
-    y_1 = copy.deepcopy(u[0])
-    y_1[0:3] = u[0][0:3] + u[0][3:6]*h  + f(u[0], t)[3:6]*h*h/2
-    y_1[3:6] = u[0][3:6] + (f(u[0], t)[3:6] + f(y_1, t+h)[3:6])*h/2
-    u[0] = copy.deepcopy(y_1)
+def semi_implicit_euler(f, u):
+    u[0][3:6] += f(u[0] , t)[3:6]*h
+    u[0][0:3] += f(u[0] , t)[0:3]*h
     return u
 
 def symplectic_euler(f, u):
@@ -76,6 +61,13 @@ def stormer_verlet(f, u):
     u[0][3:6] = p
     return u
 
+def velocity_verlet(f, u):
+    y_1 = copy.deepcopy(u[0])
+    y_1[0:3] = u[0][0:3] + u[0][3:6]*h  + f(u[0], t)[3:6]*h*h/2
+    y_1[3:6] = u[0][3:6] + (f(u[0], t)[3:6] + f(y_1, t+h)[3:6])*h/2
+    u[0] = copy.deepcopy(y_1)
+    return u
+
 def two_step_adams_bashforth(f, u):
     global t
     # multistep, need a second point
@@ -87,7 +79,33 @@ def two_step_adams_bashforth(f, u):
     u[1] = copy.deepcopy(temp)
     return u
 
+def crank_nicolson(f, u):
+    s = 1e-12
+    c = np.zeros(6)
+    diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
+    u[0] += f(u[0], t)*h/2
+    while (np.abs(diff)>s).any():
+        diff = c
+        c =  f(u[0] + c, t+h)*h/2
+        diff -= c
+    u[0] += c        
+    return u
+           
+def runge_kutta4(f, u):
+    k1 = f(u[0], t)*h
+    k2 = f(u[0] + k1/2, t +h/2)*h
+    k3 = f(u[0] + k2/2 , t + h/2)*h
+    k4 = f(u[0] + k3 , t + h)*h
+    u[0] = (u[0] + (k1 + 2*k2 + 2*k3 + k4)/6.0)
+    return u
 
+
+
+####### Derivative of the Hamiltonian of the single, double and triple pendulum with respect to q and p.
+# this is necessary for the double pendulum and triple to get a symplectic integrator (Stormer Verlet and Symplectic Euler)
+# because the Hamiltonian is not-separable which means that the U of the system only depends from q_i and/or T of the system depends only from p_i.
+
+## single pendulum
 def single_d_q_H(q, p):
     dq = np.zeros(3)
     (q1, q2, q3) = q
@@ -102,6 +120,7 @@ def single_d_p_H(q, p):
     dp[0] = p1/(masses[0]*lengths[0]**2)
     return dp
 
+## double pendulum
 def double_d_p_H(q, p):
     l1, l2, l3 = lengths[0], lengths[1], lengths[2]
     m1, m2, m3 = masses[0], masses[1], masses[2]
@@ -125,6 +144,7 @@ def double_d_q_H(q, p):
     dq[1] = (np.cos(q1 - q2)*(l2**2*m2*p1**2 + l1**2*(m1 + m2)*p2**2 -       2*l1*l2*m2*p1*p2*np.cos(q1 - q2))*np.sin(q1 - q2))/     (l1**2*l2**2*(m1 + m2 - m2*np.cos(q1 - q2)**2)**2) - (p1*p2*    np.sin(q1 - q2))/(l1*l2*(m1 + m2 - m2*np.cos(q1 - q2)**2)) +  g*l2*m2*np.sin(q2)
     return dq
 
+## triple pendulum
 def triple_d_q_H(q, p):
     dq = np.zeros(3)
     (q1, q2, q3) = q
@@ -136,7 +156,6 @@ def triple_d_q_H(q, p):
     dq[1] = ((-4*l2**2*l3**2*m2*m3*p1**2 - 2*l2**2*l3**2*m3**2*p1**2 - 4*l1**2*l3**2*m1*m3*p2**2 -     4*l1**2*l3**2*m2*m3*p2**2 - 2*l1**2*l3**2*m3**2*p2**2 - 4*l1**2*l2**2*m1*m2*p3**2 -     2*l1**2*l2**2*m2**2*p3**2 - 4*l1**2*l2**2*m1*m3*p3**2 - 4*l1**2*l2**2*m2*m3*p3**2 -     2*l1**2*l2**2*m3**2*p3**2 + 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) - g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) -     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) - 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) -     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) -     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) - g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) +     8*l1*l2*l3**2*m2*m3*p1*p2*np.cos(q1 - q2) + 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 - q2) +     2*l1**2*l2**2*m2**2*p3**2*np.cos(2*(q1 - q2)) + 4*l1**2*l2**2*m2*m3*p3**2*np.cos(2*(q1 - q2)) +     2*l1**2*l2**2*m3**2*p3**2*np.cos(2*(q1 - q2)) - g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) -     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) - g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) +     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) +     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) + 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) +     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) + 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) -     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) - g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) - 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) -     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) -     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) - g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) +     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) + 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) +     2*l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) - g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) -     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) - 4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) -     4*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) + 8*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) +     4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) + 4*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) +     2*l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) - g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) +     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) +     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) + 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) -     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) - 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3) -     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) - g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) - g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) -     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) - g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*(-2*m2*(m2 + m3)*np.sin(2*(q1 - q2)) + 2*m1*m3*np.sin(2*(q2 - q3))) -   l2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (-3*g*l1**2*l2**2*l3**2*m2*m3*(m2 + m3)**2*np.sin(2*q1 - 3*q2) - 2*g*l1**3*l2*l3**2*m2*m3*(m2 + m3)*     (m1 + m2 + m3)*np.sin(q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m1*m2**2*m3*np.sin(3*q1 - 2*q2) -     2*g*l1**3*l2*l3**2*m2**3*m3*np.sin(3*q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m1*m2*m3**2*np.sin(3*q1 - 2*q2) -     4*g*l1**3*l2*l3**2*m2**2*m3**2*np.sin(3*q1 - 2*q2) - 2*g*l1**3*l2*l3**2*m2*m3**3*np.sin(3*q1 - 2*q2) +     8*l1*l3**2*m2*m3*p1*p2*np.sin(q1 - q2) + 4*l1*l3**2*m3**2*p1*p2*np.sin(q1 - q2) +     4*l1**2*l2*m2**2*p3**2*np.sin(2*(q1 - q2)) + 8*l1**2*l2*m2*m3*p3**2*np.sin(2*(q1 - q2)) +     4*l1**2*l2*m3**2*p3**2*np.sin(2*(q1 - q2)) - g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(2*q1 - q2) -     2*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(2*q1 - q2) - g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(2*q1 - q2) -     4*g*l1**2*l2**2*l3**2*m1*m2**2*m3*np.sin(q2) - 2*g*l1**2*l2**2*l3**2*m2**3*m3*np.sin(q2) -     6*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q2) - 4*g*l1**2*l2**2*l3**2*m2**2*m3**2*np.sin(q2) -     2*g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q2) - 2*g*l1**2*l2**2*l3**2*m2*m3**3*np.sin(q2) +     2*g*l1**2*l2*l3**3*m1*m3**3*np.sin(2*q2 - 3*q3) + g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(q2 - 2*q3) +     g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(q2 - 2*q3) + 4*l1*l3**2*m3**2*p1*p2*np.sin(q1 + q2 - 2*q3) +     2*g*l1**3*l2*l3**2*m1**2*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3**2*m1*m2*m3**2*     np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3**2*m1*m3**3*np.sin(q1 + 2*q2 - 2*q3) +     3*g*l1**2*l2**2*l3**2*m1*m2*m3**2*np.sin(3*q2 - 2*q3) + 3*g*l1**2*l2**2*l3**2*m1*m3**3*np.sin(3*q2 - 2*q3) -     2*g*l1**2*l2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 - q3) - 2*g*l1**2*l2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 - q3) - 4*l1**2*l3*m2*m3*p2*p3*np.sin(2*q1 - q2 - q3) -     4*l1**2*l3*m3**2*p2*p3*np.sin(2*q1 - q2 - q3) - 8*l1**2*l3*m1*m3*p2*p3*np.sin(q2 - q3) -     4*l1**2*l3*m2*m3*p2*p3*np.sin(q2 - q3) - 4*l1**2*l3*m3**2*p2*p3*np.sin(q2 - q3) -     4*l2*l3**2*m3**2*p1**2*np.sin(2*(q2 - q3)) + 2*g*l1**2*l2*l3**3*m1*m3**3*np.sin(2*q2 - q3) -     8*l1*l2*l3*m2*m3*p1*p3*np.sin(q1 - 2*q2 + q3) - 8*l1*l2*l3*m3**2*p1*p3*np.sin(q1 - 2*q2 + q3) -     2*g*l1**2*l2*l3**3*m2**2*m3**2*np.sin(2*q1 - 2*q2 + q3) - 2*g*l1**2*l2*l3**3*m2*m3**3*     np.sin(2*q1 - 2*q2 + q3) - 2*g*l1**3*l2*l3**2*m1**2*m3**2*np.sin(q1 - 2*q2 + 2*q3) -     2*g*l1**3*l2*l3**2*m1*m2*m3**2*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3**2*m1*m3**3*     np.sin(q1 - 2*q2 + 2*q3)))/(2*l1**2*l2**2*l3**2*m3*  (2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))**2)        
     dq[2] = (2*m1*(4*l2**2*l3**2*m2*m3*p1**2 + 2*l2**2*l3**2*m3**2*p1**2 + 4*l1**2*l3**2*m1*m3*p2**2 +     4*l1**2*l3**2*m2*m3*p2**2 + 2*l1**2*l3**2*m3**2*p2**2 + 4*l1**2*l2**2*m1*m2*p3**2 +     2*l1**2*l2**2*m2**2*p3**2 + 4*l1**2*l2**2*m1*m3*p3**2 + 4*l1**2*l2**2*m2*m3*p3**2 +     2*l1**2*l2**2*m3**2*p3**2 - 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) + g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) +     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) + 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) +     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) -     8*l1*l2*l3**2*m2*m3*p1*p2*np.cos(q1 - q2) - 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 - q2) -     2*l1**2*l2**2*m2**2*p3**2*np.cos(2*(q1 - q2)) - 4*l1**2*l2**2*m2*m3*p3**2*np.cos(2*(q1 - q2)) -     2*l1**2*l2**2*m3**2*p3**2*np.cos(2*(q1 - q2)) + g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) +     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) + g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) -     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) -     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) - 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) -     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) +     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) + g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) + 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) +     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) + g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) -     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) - 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) -     2*l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) + g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) +     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) + 4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) +     4*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) - 8*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) -     4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) - 4*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) -     2*l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) + g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) -     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) -     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) +     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) + 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3) +     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) + g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) + g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*np.sin(2*(q2 - q3)) +   l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (3*g*l1**2*l2**2*l3**2*m1*m3**2*np.sin(2*q2 - 3*q3) - 4*l1**2*l3*m3*p2**2*np.sin(2*(q1 - q3)) +     l2*(2*g*l1**2*l2**2*l3*m1*m3*(m2 + m3)*np.sin(q2 - 2*q3) + 8*l1*l3*m3*p1*p2*np.sin(q1 + q2 - 2*q3) +       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 + 2*q2 - 2*q3) +       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**2*l2**2*l3*m1*m2*m3*np.sin(3*q2 - 2*q3) +       2*g*l1**2*l2**2*l3*m1*m3**2*np.sin(3*q2 - 2*q3) - 4*l1*l2*m2*p1*p3*np.sin(q1 - q3) -       4*l1*l2*m3*p1*p3*np.sin(q1 - q3) + g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 - q3) +       g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 - q3) + 4*l1**2*m2*p2*p3*np.sin(2*q1 - q2 - q3) +       4*l1**2*m3*p2*p3*np.sin(2*q1 - q2 - q3) - 8*l1**2*m1*p2*p3*np.sin(q2 - q3) -       4*l1**2*m2*p2*p3*np.sin(q2 - q3) - 4*l1**2*m3*p2*p3*np.sin(q2 - q3) -       4*l2*l3*m3*p1**2*np.sin(2*(q2 - q3)) + g*l1**2*l2*l3**2*m1*m3**2*np.sin(2*q2 - q3) +       4*g*l1**2*l2*l3**2*m1*m2*m3*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2**2*m3*np.sin(q3) +       2*g*l1**2*l2*l3**2*m1*m3**2*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2*m3**2*np.sin(q3) -       4*l1*l2*m2*p1*p3*np.sin(q1 - 2*q2 + q3) - 4*l1*l2*m3*p1*p3*np.sin(q1 - 2*q2 + q3) -       g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 + q3) - g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 + q3) -       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 - 2*q2 + 2*q3) -       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 - 2*q2 + 2*q3))))/ (2*l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -     m1*m3*np.cos(2*(q2 - q3)))**2)
     return dq
-
 
 def triple_d_p_H(q, p):
     dp = np.zeros(3)
@@ -150,45 +169,30 @@ def triple_d_p_H(q, p):
     dp[2] = (2*(2*l1*l2*m1*m2*p3 + l1*l2*m2**2*p3 + 2*l1*l2*m1*m3*p3 + 2*l1*l2*m2*m3*p3 + l1*l2*m3**2*p3 -    l1*l2*(m2 + m3)**2*p3*np.cos(2*(q1 - q2)) - l2*l3*m3*(m2 + m3)*p1*np.cos(q1 - q3) +    l1*l3*m2*m3*p2*np.cos(2*q1 - q2 - q3) + l1*l3*m3**2*p2*np.cos(2*q1 - q2 - q3) -    2*l1*l3*m1*m3*p2*np.cos(q2 - q3) - l1*l3*m2*m3*p2*np.cos(q2 - q3) - l1*l3*m3**2*p2*np.cos(q2 - q3) +    l2*l3*m2*m3*p1*np.cos(q1 - 2*q2 + q3) + l2*l3*m3**2*p1*np.cos(q1 - 2*q2 + q3)))/ (l1*l2*l3**2*m3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -    m1*m3*np.cos(2*(q2 - q3)))) 
     return dp
 
-def runge_kutta4(f, u):
-    k1 = f(u[0], t)*h
-    k2 = f(u[0] + k1/2, t +h/2)*h
-    k3 = f(u[0] + k2/2 , t + h/2)*h
-    k4 = f(u[0] + k3 , t + h)*h
-    u[0] = (u[0] + (k1 + 2*k2 + 2*k3 + k4)/6.0)
-    return u
+#### function for integrating, these calculate  F_i/m = a_i and returns [v_i, a_i] because of simplicity for multiplication in the function for integrating
 
-def forward_euler(f, u):
-    u[0] = u[0] + f(u[0] , t)*h
-    return u
+def f_single( u , t):
+	theta_1 = u[0]
+	w1 = u[3]      
+	dw1 = -g/lengths[0] * np.sin(theta_1)
+	return np.array([ w1, 0, 0, dw1, 0, 0])
 
-def backward_euler(f, u):
-    s = 1e-12
-    c = np.zeros(6)
-    diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
-    while (np.abs(diff)>s).any():
-        diff = c
-        c =  f(u[0] + c, t+h)*h
-        diff -= c
-    u[0] += c        
-    return u
-            
-def crank_nicolson(f, u):
-    s = 1e-12
-    c = np.zeros(6)
-    diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
-    u[0] += f(u[0], t)*h/2
-    while (np.abs(diff)>s).any():
-        diff = c
-        c =  f(u[0] + c, t+h)*h/2
-        diff -= c
-    u[0] += c        
-    return u
- 
-def semi_implicit_euler(f, u):
-    u[0][3:6] += f(u[0] , t)[3:6]*h
-    u[0][0:3] += f(u[0] , t)[0:3]*h
-    return u
+def f_double( u , t):
+    theta_1, theta_2 = u[0], u[1]
+    w1, w2 = u[3], u[4]
+
+    theta_12 = theta_1 - theta_2
+    sin_1, sin_2 = (np.sin(theta_1), np.sin(theta_2))
+    cos_1, cos_2 = (np.cos(theta_1), np.cos(theta_2))
+    cos_12 = np.cos(theta_12)
+    sin_12 = np.sin(theta_12)
+    cos_21 = cos_12
+    sin_21 = - sin_12
+
+    dw1 = (-sin_12*(masses[1]*lengths[0]*w1**2 * cos_12 + masses[1]*lengths[1]*w2**2) - g*((masses[0]+masses[1])*sin_1 - masses[1]*sin_2 * cos_12))/(lengths[0]*(masses[0] + masses[1]* sin_12**2))
+    dw2 = (sin_12 * ((masses[0]+masses[1])*lengths[0]*w1**2 + masses[1]*lengths[1]*w2**2 * cos_12) + g*((masses[0]+masses[1])*sin_1 * cos_12 - (masses[0]+masses[1])*sin_2))/(lengths[1]*(masses[0]+masses[1]*sin_12**2))   
+
+    return np.array([ w1, w2, 0, dw1, dw2, 0])
 
 def f_triple(u, t):
 	theta_1, theta_2, theta_3 = u[0], u[1], u[2]
@@ -210,28 +214,30 @@ def f_triple(u, t):
 	dw3 = ((g*sin_3 + lengths[0]*w1**2*(cos_1*sin_3 - cos_3*sin_1) + lengths[1]*w2**2*(cos_2*sin_3 - cos_3*sin_2))*(-cos_21**2*masses[1]**2 - 2*cos_21**2*masses[1]*masses[2] - cos_21**2*masses[2]**2 + masses[0]*masses[1] + masses[0]*masses[2] + masses[1]**2 + 2*masses[1]*masses[2] + masses[2]**2) + (cos_21*cos_32*masses[1] + cos_21*cos_32*masses[2] - cos_31*masses[1] - cos_31*masses[2])*(g*masses[0]*sin_1 + g*masses[1]*sin_1 + g*masses[2]*sin_1 - lengths[1]*masses[1]*w2**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[1]*masses[2]*w2**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[2]*masses[2]*w3**2*(cos_1*sin_3 - cos_3*sin_1)) - (-cos_21*cos_31*masses[1] - cos_21*cos_31*masses[2] + cos_32*masses[0] + cos_32*masses[1] + cos_32*masses[2])*(g*masses[1]*sin_2 + g*masses[2]*sin_2 + lengths[0]*masses[1]*w1**2*(cos_1*sin_2 - cos_2*sin_1) + lengths[0]*masses[2]*w1**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[2]*masses[2]*w3**2*(cos_2*sin_3 - cos_3*sin_2)))/(lengths[2]*(cos_21**2*masses[1]**2 + 2*cos_21**2*masses[1]*masses[2] + cos_21**2*masses[2]**2 - 2*cos_21*cos_31*cos_32*masses[1]*masses[2] - 2*cos_21*cos_31*cos_32*masses[2]**2 + cos_31**2*masses[1]*masses[2] + cos_31**2*masses[2]**2 + cos_32**2*masses[0]*masses[2] + cos_32**2*masses[1]*masses[2] + cos_32**2*masses[2]**2 - masses[0]*masses[1] - masses[0]*masses[2] - masses[1]**2 - 2*masses[1]*masses[2] - masses[2]**2))
 	return np.array([ w1, w2, w3 , dw1, dw2, dw3])
 
-def f_double( u , t):
-    theta_1, theta_2 = u[0], u[1]
-    w1, w2 = u[3], u[4]
+#### usefull function 
 
-    theta_12 = theta_1 - theta_2
-    sin_1, sin_2 = (np.sin(theta_1), np.sin(theta_2))
-    cos_1, cos_2 = (np.cos(theta_1), np.cos(theta_2))
-    cos_12 = np.cos(theta_12)
-    sin_12 = np.sin(theta_12)
-    cos_21 = cos_12
-    sin_21 = - sin_12
+# function to keep angle between -pi and pi
+def angle_mod(theta):
+    while (theta < 0):
+        theta+=(2*np.pi)
+    theta = theta % (2*np.pi)
+    if theta > np.pi:
+        theta-=(2*np.pi)
+    return theta
 
-    dw1 = (-sin_12*(masses[1]*lengths[0]*w1**2 * cos_12 + masses[1]*lengths[1]*w2**2) - g*((masses[0]+masses[1])*sin_1 - masses[1]*sin_2 * cos_12))/(lengths[0]*(masses[0] + masses[1]* sin_12**2))
-    dw2 = (sin_12 * ((masses[0]+masses[1])*lengths[0]*w1**2 + masses[1]*lengths[1]*w2**2 * cos_12) + g*((masses[0]+masses[1])*sin_1 * cos_12 - (masses[0]+masses[1])*sin_2))/(lengths[1]*(masses[0]+masses[1]*sin_12**2))   
-
-    return np.array([ w1, w2, 0, dw1, dw2, 0])
-
-def f_single( u , t):
-	theta_1 = u[0]
-	w1 = u[3]      
-	dw1 = -g/lengths[0] * np.sin(theta_1)
-	return np.array([ w1, 0, 0, dw1, 0, 0])
+# function to calculate functions implicitly
+def implicit(f, q, p, h_inc,  s, p_or_q):
+    diff = np.array([2*s, 2*s, 2*s]) 
+    d = np.zeros(3)
+    count = 0
+    count_max = 500
+    while( (np.abs(diff) > s).any() and count < count_max):
+        if(p_or_q =="q"): d1 = f(q+d, p)*h_inc
+        elif(p_or_q =="p"):  d1 = f(q, p-d)*h_inc
+        diff = d1 -  d
+        d = copy.deepcopy(d1)
+        count+=1
+    return d
 
 def get_xy_coords(q):
     x1 = lengths[0]*np.sin(q[0])
@@ -260,6 +266,7 @@ def get_xy_velocity(p):
 	dy3 = -lengths[2] * np.sin(p[2])*p[5] + dy2
 	return (dx1, dx2, dx3), (dy1, dy2, dy3)
 
+### these functions are used for the graphs
 def kinetic_energy(p, n):
     dx, dy = get_xy_velocity(p)
     ek = np.zeros(n)
@@ -297,105 +304,8 @@ def xy_to_segment(x, y, n, n_pend):
             segments[i][j+1][1] = y[j][i]
     return segments
 
-def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
-    global t #, lengths, masses
-    t = 0
 
-    # mode 0 : thetas mode 1: omegas  mode 2: 
-    u0_pend = np.empty((n_pend, 6))
-    um1_pend = np.empty((n_pend, 6))
-    perturbation_th_omega = np.zeros(6)
-    perturbation_masses = np.zeros(3)
-    perturbation_lengths = np.zeros(3)
-    perturbation_gravity = 0.
-    frames = int(min(frameforsec * time_simulation, time_simulation/h))
-    track_segments_plot = np.zeros((n_pend, frames, 2))
-
-    if n_mode == 1:
-        perturbation_th_omega[0:3] += perturbation
-    elif n_mode == 2:
-        perturbation_th_omega[3:6] += perturbation
-    elif n_mode == 3:
-        perturbation_masses =  np.array([perturbation*1 , 0, 0]) 
-    elif n_mode == 4:
-        perturbation_lengths += perturbation
-    elif n_mode == 5:
-        perturbation_gravity += perturbation
-         
-    u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
-    um1= np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
-    segments = np.zeros((n_pend, (n+1), 2))
-
-    for i in range(n_pend):
-        u0_pend[i] = u0 + perturbation_th_omega*i
-        um1_pend[i] = u0 + perturbation_th_omega*i
-
-# temporary fix for lengths TO CHANGE
-    lengths_rapp = np.zeros(n_pend)
-    for i in range(n_pend):
-        lengths_rapp[i] = (lengths[0]+i*perturbation_lengths[0])/lengths[0]
-
-    f_n = { 1: f_single, 2: f_double, 3: f_triple}
-
-    # for graphing
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.axis('off')
-    l_max = np.sum((lengths*1.2 + n_pend*perturbation_lengths) [0:n:1])
-    ax.set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
-
-    p_segments = np.zeros((n_pend, 0, 2))
-    track_segments = np.zeros((n_pend, 0, 2))
-    color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
-    pends = collections.LineCollection(p_segments, color = 'black')
-    track_pends = collections.LineCollection(track_segments, colors = color_lines)
-    ax.add_collection(track_pends)
-    ax.add_collection(pends)
-    points, = plt.plot([], [],'ok', lw = '1')
-    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
-
-    def init():
-        pends.set_segments(np.zeros((n_pend, 0, 2)))
-        track_pends.set_segments(np.zeros((n_pend, 0, 2)))
-        points.set_data([], [])
-        time_text.set_text('')
-
-        return pends, points, track_pends, time_text
-
-    def animate(i):
-        global t, lengths, masses, g
-        nonlocal u0_pend, um1_pend
-        position = np.zeros((n, 2, n_pend))
-        fps_jump = max(int((1/h)/frameforsec), 1) # how much should i jump writing frames to get at most frameforsec photos in a second
-
-        for x in range(fps_jump):
-            for o in range(n_pend):
-                (u0_pend[o], um1_pend[o]) = f(f_n[n], [u0_pend[o], um1_pend[o]])
-                lengths += perturbation_lengths
-                masses  += perturbation_masses
-                g       += perturbation_gravity
-
-            t+=h
-            masses  -= perturbation_masses*n_pend
-            lengths -= perturbation_lengths*n_pend
-            g       -= perturbation_gravity*n_pend
-
-        x_pend, y_pend = get_xy_coords(u0_pend[:,:3].T)*lengths_rapp
-        track_segments_plot[0:n_pend:1][:,i][:,0] = x_pend[n-1] 
-        track_segments_plot[0:n_pend:1][:,i][:,1] = y_pend[n-1]
-        p_segments = xy_to_segment(x_pend, y_pend, n, n_pend)
-        lines = xy_to_line(x_pend, y_pend, n, n_pend)
-        pends.set_segments(p_segments)
-        track_pends.set_segments(track_segments_plot[:, 0:i+1])
-        time_text.set_text('Time = %.1f' % (t))
-        x_point, y_point = lines.reshape(-1, 2).T
-        points.set_data(x_point, y_point)
-        percentage(i)
-        return pends, points, track_pends, time_text
-
-    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
-    anim.save(output)
-    print(" Done             ")
-    return anim
+#### Types of animation  of the program
 
 def animate_pendulum_simple(f, output, n):
     global t
@@ -435,10 +345,10 @@ def animate_pendulum_simple(f, output, n):
     # different for so it is better from a visual point of view
     for p in range(n-1):
 # tail and points
-        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=[-1], markeredgecolor = 'k', animated = True)[0])
 
     ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1],lw=1, markevery=1, markeredgecolor = 'k', animated = True)[0])
-    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o',color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1],linestyle='', markevery=1000, markeredgecolor = 'k', animated = True)[0])
+    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o',color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1],linestyle='', markevery=[-1], markeredgecolor = 'k', animated = True)[0])
 
     time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
     energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
@@ -561,20 +471,20 @@ def animate_pendulum_detailed(f, output, n):
 # different for so it is better from a visual point of view
     for p in range(n):
 # tail and points
-        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])
 
-    energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{k}$',color = 'blue',markersize = 4, markerfacecolor = 'blue',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
-    energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{p}$',color = 'orange',markersize = 4, markerfacecolor = 'orange', linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
-    energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 4, markerfacecolor = 'red',linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
+    energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{k}$',color = 'blue',markersize = 4, markerfacecolor = 'blue',linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])    
+    energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{p}$',color = 'orange',markersize = 4, markerfacecolor = 'orange', linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])    
+    energy.append(axes_v[position["energy_k_p"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 4, markerfacecolor = 'red',linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])    
     energy.append(axes_v[position["energy_tot"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 2, markerfacecolor = 'red',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])    
 
     for j in range(n):
-        energy.append(axes_v[position["energy_points"]].plot([], [], 'o-',label = f'$E_{{{j+1}}}$',color = color_tails[j],markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])    
-        pos_x.append(axes_v[position['position_x']].plot([], [], 'o-', label = f'Posizione x{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j], linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
-        pos_y.append(axes_v[position['position_y']].plot([], [], 'o-',  label = f'Position y{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+        energy.append(axes_v[position["energy_points"]].plot([], [], 'o-',label = f'$E_{{{j+1}}}$',color = color_tails[j],markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])    
+        pos_x.append(axes_v[position['position_x']].plot([], [], 'o-', label = f'Posizione x{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j], linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])
+        pos_y.append(axes_v[position['position_y']].plot([], [], 'o-',  label = f'Position y{j+1}', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])
         string_theta = "\theta"
         string_dot_theta = "\dot{\theta}"
-        phase.append(axes_v[position['phase']].plot([], [], 'o-', label = f'Phase ${string_theta}_{{{j+1}}}$ vs ${string_dot_theta}_{{{j+1}}}$', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=10000, markeredgecolor = 'k', animated = True)[0])
+        phase.append(axes_v[position['phase']].plot([], [], 'o-', label = f'Phase ${string_theta}_{{{j+1}}}$ vs ${string_dot_theta}_{{{j+1}}}$', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])
 
 
     l_max = np.sum((lengths) [0:n:1])
@@ -749,6 +659,120 @@ def animate_pendulum_detailed(f, output, n):
 #    plt.show()
     return anim
 
+def the_butterfly_effect(f, output, n, n_pend, perturbation, n_mode):
+    global t #, lengths, masses
+    t = 0
+
+    # mode 0 : thetas mode 1: omegas  mode 2: 
+    u0_pend = np.empty((n_pend, 6))
+    um1_pend = np.empty((n_pend, 6))
+    perturbation_th_omega = np.zeros(6)
+    perturbation_masses = np.zeros(3)
+    perturbation_lengths = np.zeros(3)
+    perturbation_gravity = 0.
+    frames = int(min(frameforsec * time_simulation, time_simulation/h))
+    track_segments_plot = np.zeros((n_pend, frames, 2))
+
+    if n_mode == 1:
+        perturbation_th_omega[0:3] += perturbation
+    elif n_mode == 2:
+        perturbation_th_omega[3:6] += perturbation
+    elif n_mode == 3:
+        perturbation_masses =  np.array([perturbation*1 , 0, 0]) 
+    elif n_mode == 4:
+        perturbation_lengths += perturbation
+    elif n_mode == 5:
+        perturbation_gravity += perturbation
+         
+    u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
+    um1= np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
+    segments = np.zeros((n_pend, (n+1), 2))
+
+    for i in range(n_pend):
+        u0_pend[i] = u0 + perturbation_th_omega*i
+        um1_pend[i] = u0 + perturbation_th_omega*i
+
+# temporary fix for lengths TO CHANGE
+    lengths_rapp = np.zeros(n_pend)
+    for i in range(n_pend):
+        lengths_rapp[i] = (lengths[0]+i*perturbation_lengths[0])/lengths[0]
+
+    f_n = { 1: f_single, 2: f_double, 3: f_triple}
+
+    # for graphing
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.axis('off')
+    l_max = np.sum((lengths*1.2 + n_pend*perturbation_lengths) [0:n:1])
+    ax.set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
+
+    p_segments = np.zeros((n_pend, 0, 2))
+    track_segments = np.zeros((n_pend, 0, 2))
+    color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
+    pends = collections.LineCollection(p_segments, color = 'black')
+    track_pends = collections.LineCollection(track_segments, colors = color_lines)
+    ax.add_collection(track_pends)
+    ax.add_collection(pends)
+    points, = plt.plot([], [],'ok', lw = '1')
+    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+
+    def init():
+        pends.set_segments(np.zeros((n_pend, 0, 2)))
+        track_pends.set_segments(np.zeros((n_pend, 0, 2)))
+        points.set_data([], [])
+        time_text.set_text('')
+
+        return pends, points, track_pends, time_text
+
+    def animate(i):
+        global t, lengths, masses, g
+        nonlocal u0_pend, um1_pend
+        position = np.zeros((n, 2, n_pend))
+        fps_jump = max(int((1/h)/frameforsec), 1) # how much should i jump writing frames to get at most frameforsec photos in a second
+
+        for x in range(fps_jump):
+            for o in range(n_pend):
+                (u0_pend[o], um1_pend[o]) = f(f_n[n], [u0_pend[o], um1_pend[o]])
+                lengths += perturbation_lengths
+                masses  += perturbation_masses
+                g       += perturbation_gravity
+
+            t+=h
+            masses  -= perturbation_masses*n_pend
+            lengths -= perturbation_lengths*n_pend
+            g       -= perturbation_gravity*n_pend
+
+        x_pend, y_pend = get_xy_coords(u0_pend[:,:3].T)*lengths_rapp
+        track_segments_plot[0:n_pend:1][:,i][:,0] = x_pend[n-1] 
+        track_segments_plot[0:n_pend:1][:,i][:,1] = y_pend[n-1]
+        p_segments = xy_to_segment(x_pend, y_pend, n, n_pend)
+        lines = xy_to_line(x_pend, y_pend, n, n_pend)
+        pends.set_segments(p_segments)
+        track_pends.set_segments(track_segments_plot[:, 0:i+1])
+        time_text.set_text('Time = %.1f' % (t))
+        x_point, y_point = lines.reshape(-1, 2).T
+        points.set_data(x_point, y_point)
+        percentage(i)
+        return pends, points, track_pends, time_text
+
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
+    anim.save(output)
+    print(" Done             ")
+    return anim
+
+### Print functions
+
+def running():
+    print(f"\n Running {dict_func[mode].__name__} {n_pend_string[n_p]} pendulum propagated with {f_int.__name__}")
+
+def percentage(i):
+    print(f"  {int(100*i/min(frameforsec * time_simulation, int(time_simulation/h)))} % Processing  ", end="\r") 
+    
+def bye():
+    print("Non valid input. Bye")
+    exit()
+
+
+########## Start of the program ##########
 
 # default initial conditions
 # initial angle in grad 
@@ -763,15 +787,26 @@ h = 0.001
 time_simulation = 10
 frameforsec = 30
 
+# default number of pendulum
+n_p = 3
+# default method of integration
+f_int = runge_kutta4
+
+## for the butterfly effect
+perturb = 1e-4
+n_pend = 40
+
 # dictionary to simplify life for input n other things
 n_pend_string = {1: "single", 2: "double", 3: "triple"}
 d_f_int = {1:forward_euler, 2:backward_euler, 3:semi_implicit_euler, 4: symplectic_euler, 5:stormer_verlet,  6: velocity_verlet, 7: two_step_adams_bashforth, 8: crank_nicolson, 9: runge_kutta4,}
-n_i =  input("Method of Numerical integration? - N for pendulum \n  [1] Forward Euler - 1, 2, 3 \n   2 Backward Euler - 1, 2, 3 \n   3 Semi-Implicit Euler - 1 \n   4 Symplectic Euler - 1, 2, 3 \n   5 Stormer Verlet - 1, 2, 3  \n   6 Velocity Verlet - 1 \n   7 Two-step Adams-Bashforth - 1, 2, 3 \n   8 Crank Nicolson - 1, 2, 3 \n   9 Runge Kutta 4 - 1, 2, 3 \n   ")
+dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
+dict_func = { 1: animate_pendulum_simple,2: animate_pendulum_detailed, 3: the_butterfly_effect}
 
-if (n_i == ""): f_int = runge_kutta4
-else: f_int = d_f_int[int(n_i)]
-   
-n_p = 3
+####### MENU #######
+n_i =  input("Method of Numerical integration? - N for working pendulum \n   1 Forward Euler - 1, 2, 3 \n   2 Backward Euler - 1, 2, 3 \n   3 Semi-Implicit Euler - 1 \n   4 Symplectic Euler - 1, 2, 3 \n   5 Stormer Verlet - 1, 2, 3  \n   6 Velocity Verlet - 1 \n   7 Two-step Adams-Bashforth - 1, 2, 3 \n   8 Crank Nicolson - 1, 2, 3 \n  [9] Runge Kutta 4 - 1, 2, 3 \n   ")
+
+if (n_i.isdigit()): f_int = d_f_int[int(n_i)]
+elif (n_i): bye()
 
 y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {n_p} \n   time step = {h}s \n   theta_0 = {grads0}grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {frameforsec}s**-1 \n   time simulation = {time_simulation}s \n   g = {g}m/s**2 \n").lower()
 if (y_n == "n"):
@@ -818,10 +853,6 @@ elif y_n != "y" and y_n:
         print("wrong input.")
         exit()
 
-dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
-dict_func = { 1: animate_pendulum_simple,2: animate_pendulum_detailed, 3: the_butterfly_effect}
-perturb = 1e-4
-n_pend = 40
 t_start = perf_counter()
 mode = input("Select Mode: \n  [1] Simple animated pendulum \n   2 Detailed animated pendulum \n   3 The Butterfly Effect \n  ")
 if mode == "1" or  mode =="2" or not mode: 
@@ -829,10 +860,9 @@ if mode == "1" or  mode =="2" or not mode:
     else: mode = 2
     fileoutput = input("Name output gif [enter to default]:   ")
     if (not fileoutput): fileoutput = f"{dict_func[mode].__name__}_{n_pend_string[n_p]}_{f_int.__name__}.mp4"
+
     running()
     dict_func[mode](f_int, fileoutput, n_p)
-
-
 
 elif mode == "3": 
     mode = 3
@@ -844,15 +874,19 @@ elif mode == "3":
     s_perturb = input("Module of perturbation? [1e-4 grad | 1e-4 grad/s | 1e-4 Kg | 1e-4 m | 1e-4 m/s^2]   ")
     if (s_perturb.lstrip('-').replace('.','',1).replace('e-','',1).replace('e','',1).isdigit()): perturb = float(s_perturb)
     elif (s_perturb): bye()
+    else: s_perturb = "1e-4"
     n_pends = input("Number of pendulums simulated? [40]")
     if (n_pends.isdigit()): n_pend = int(n_pends)
     elif (n_pends): bye()
-
 
     fileoutput = input("Name output gif [enter to default]:   ")
     if (not fileoutput): fileoutput = f"{dict_func[mode].__name__}_{n_pend_string[n_p]}-perturb_{dict_mode[n_mode]}-{s_perturb}-{f_int.__name__}.mp4"
     running()
     dict_func[mode](f_int, fileoutput , n_p, n_pend, perturb, n_mode)
+
+
+else: bye()
 t_end = perf_counter()
+
 print(f"Time execution: {t_end - t_start: .4}")
 print(f"Output file: {fileoutput}")
