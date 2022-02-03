@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 from matplotlib import collections
 
 from pendulums_functions import *
+from numerical_integration import two_step_adams_bashforth
 
 #### Types of animation  of the program
 
@@ -12,6 +13,7 @@ def animate_pendulum_simple(pend):
     fig = plt.figure(figsize = (16, 9))
     position = { 'motion':0}
     n = pend.type_pend
+    pend_b = copy.deepcopy(pend)
 # graphs 
     axes_v = [ fig.add_subplot(1, 1, 1)]
 # variables to plot
@@ -57,9 +59,16 @@ def animate_pendulum_simple(pend):
     def animate(i):
         tail = 100000
         for x in range(pend.fps_jump()):
-            thetas, omegas = pend.f_int(pend)
-            pend.set_u(thetas, omegas)
-            pend.increment_time()
+            if (pend.f_int == two_step_adams_bashforth):
+                ((thetas, omegas), (thetas_b, omegas_b))  = pend.f_int(pend, pend_b)
+                pend.set_u(thetas, omegas)
+                pend_b.set_u(thetas_b, omegas_b)
+                pend.increment_time()
+                pend_b.increment_time()
+            else:    
+                thetas, omegas = pend.f_int(pend)
+                pend.set_u(thetas, omegas)
+                pend.increment_time()
 
         x, y = pend.get_xy_coords()
 
@@ -98,7 +107,6 @@ def animate_pendulum_simple(pend):
 
 
 def animate_pendulum_detailed(pend):
-    global t
     t = 0
     fig = plt.figure(figsize = (12, 12) )
     position = {
@@ -107,10 +115,8 @@ def animate_pendulum_detailed(pend):
         'phase':     6,'energy_points':    7, 'energy_k_p':8
         }
 
-    u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
-    um1 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
-    u = np.array([u0, um1])
-    theta, r = get_polar_coords(u0)
+    n = pend.type_pend
+    pend_b = copy.deepcopy(pend)
 
     f_n = { 1: f_single, 2: f_double, 3: f_triple}
 
@@ -123,8 +129,6 @@ def animate_pendulum_detailed(pend):
             ]
 
     tails = [10, 10, 10]
-# how much should i jump writing frames to get at most frameforsec photos in a second
-    fps_jump = max(int((1/h)/frameforsec), 1) 
 
 # variables to plot
     t_plot = []
@@ -176,7 +180,7 @@ def animate_pendulum_detailed(pend):
         phase.append(axes_v[position['phase']].plot([], [], 'o-', label = f'Phase ${string_theta}_{{{j+1}}}$ vs ${string_dot_theta}_{{{j+1}}}$', color = color_tails[j], markersize = 6, markerfacecolor = marker_face[j],linewidth=2, markevery=[0], markeredgecolor = 'k', animated = True)[0])
 
 
-    l_max = np.sum((lengths) [0:n:1])
+    l_max = np.sum((pend.lengths) [0:n:1])
 
     axes_v[position['motion']].set_aspect('equal', adjustable='box')
     axes_v[position['motion']].axis('off')
@@ -195,7 +199,7 @@ def animate_pendulum_detailed(pend):
     axes_v[position['position_x']].xaxis.set_label_position("top")
     axes_v[position['position_x']].set_xlabel(r"$x (m)$")
     axes_v[position['position_x']].set_ylabel(r"$t (s)$")
-    axes_v[position['position_x']].set_ylim(0, time_simulation)
+    axes_v[position['position_x']].set_ylim(0, pend.time_max)
 
     axes_v[position['position_y']].sharey(axes_v[position['motion']])
     axes_v[position['position_y']].set_title(r"$t (s)$ vs $y (m)$")
@@ -203,7 +207,7 @@ def animate_pendulum_detailed(pend):
     axes_v[position['position_y']].set_ylabel(r"$y (m)$")
     axes_v[position['position_y']].xaxis.tick_top()
     axes_v[position['position_y']].xaxis.set_label_position("top")
-    axes_v[position['position_y']].set_xlim(0, time_simulation)
+    axes_v[position['position_y']].set_xlim(0, pend.time_max)
 
     axes_v[position['phase']].set_title(r"$\theta$ vs $\dot{\theta}$")
     axes_v[position['phase']].set_xlabel(r"$\theta (rad)$")
@@ -218,14 +222,14 @@ def animate_pendulum_detailed(pend):
 
     axes_v[position['energy_tot']].set_title("Total Energy", pad=20)
     axes_v[position['energy_tot']].ticklabel_format(useMathText=True)
-    axes_v[position['energy_tot']].set_xlim(0, time_simulation)
+    axes_v[position['energy_tot']].set_xlim(0, pend.time_max)
     axes_v[position['energy_tot']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_tot']].yaxis.tick_right()
     axes_v[position['energy_tot']].yaxis.set_label_position("right")
     axes_v[position['energy_tot']].legend()
 
     axes_v[position['energy_k_p']].set_title(r"$E_k$,  $E_p$, $E_{tot}$")
-    axes_v[position['energy_k_p']].set_xlim(0, time_simulation)
+    axes_v[position['energy_k_p']].set_xlim(0, pend.time_max)
     axes_v[position['energy_k_p']].set_ylabel(r"$Energy (J)$")
     axes_v[position['energy_k_p']].set_xlabel(r"$t (s)$")
     axes_v[position['energy_k_p']].yaxis.tick_right()
@@ -251,17 +255,25 @@ def animate_pendulum_detailed(pend):
          
 
     def animate(i):
-        global t
-        nonlocal u
-        for x in range(fps_jump):
-            u = f(f_n[n], u)
-            t+=h
-        u0 = u[0]
-        x, y = get_xy_coords(u0)
-        vx, vy = get_xy_velocity(u0)
-        theta, r = get_polar_coords(u0)
-        ene_tot = total_energy(u0, n) 
-        omega = u0[3:6]
+
+        for x in range(pend.fps_jump()):
+            if (pend.f_int == two_step_adams_bashforth):
+                ((thetas, omegas), (thetas_b, omegas_b))  = pend.f_int(pend, pend_b)
+                pend.set_u(thetas, omegas)
+                pend_b.set_u(thetas_b, omegas_b)
+                pend.increment_time()
+                pend_b.increment_time()
+            else:    
+                thetas, omegas = pend.f_int(pend)
+                pend.set_u(thetas, omegas)
+                pend.increment_time()
+
+
+        x, y = pend.get_xy_coords()
+        vx, vy = pend.get_xy_velocity()
+        theta, r = pend.get_polar_coords()
+        ene_tot = pend.total_energy() 
+        omega = pend.get_p()
 
         for k in range(n):
             x_plot[k].append(x[k])
@@ -273,10 +285,10 @@ def animate_pendulum_detailed(pend):
             omega_plot[k].append(omega[k])
             ene_tot_plot[k].append(ene_tot[k])
 
-        t_plot.append(t)
+        t_plot.append(pend.time)
         en_tot.append(np.sum(ene_tot))
-        en_k.append(np.sum(kinetic_energy(u0, n)))
-        en_p.append(np.sum(potential_energy(u0, n)))
+        en_k.append(np.sum(pend.kinetic_energy()))
+        en_p.append(np.sum(pend.potential_energy()))
 
 
 # line from the origin to the first mass
@@ -336,115 +348,111 @@ def animate_pendulum_detailed(pend):
         axes_v[position['energy_points']].autoscale_view(True, True, True)
        
     
-        time_text.set_text('Time = %.1f' % (t))
+        time_text.set_text('Time = %.1f' % (pend.time))
         energy_text.set_text('Total Energy = %.7f J' % en_tot[i])
-        percentage(i)
+        pend.percentage()
         return (ax_pend_lines[0]+ ax_pend_lines[1] + pos_x + pos_y + phase + energy + [time_text, energy_text])
 
     
-    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
-    anim.save(output)
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend.frameforsec, pend.h_step*1000), frames = pend.get_fps(), repeat = False, blit = True)
+    anim.save(pend.output)
     print(" Done             ")
 #    plt.show()
     return anim
 
 def the_butterfly_effect(pends):
-    global t #, lengths, masses
-    t = 0
-
-    # mode 0 : thetas mode 1: omegas  mode 2: 
-    u0_pend = np.empty((n_pend, 6))
-    um1_pend = np.empty((n_pend, 6))
-    perturbation_th_omega = np.zeros(6)
-    perturbation_masses = np.zeros(3)
-    perturbation_lengths = np.zeros(3)
-    perturbation_gravity = 0.
-    frames = int(min(frameforsec * time_simulation, time_simulation/h))
-    track_segments_plot = np.zeros((n_pend, frames, 2))
-
-    if n_mode == 1:
-        perturbation_th_omega[0:3] += perturbation
-    elif n_mode == 2:
-        perturbation_th_omega[3:6] += perturbation
-    elif n_mode == 3:
-        perturbation_masses =  np.array([perturbation*1 , 0, 0]) 
-    elif n_mode == 4:
-        perturbation_lengths += perturbation
-    elif n_mode == 5:
-        perturbation_gravity += perturbation
-         
-    u0 = np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
-    um1= np.array([thetas0[0], thetas0[1], thetas0[2], omegas0[0], omegas0[1], omegas0[2]])
-    segments = np.zeros((n_pend, (n+1), 2))
-
-    for i in range(n_pend):
-        u0_pend[i] = u0 + perturbation_th_omega*i
-        um1_pend[i] = u0 + perturbation_th_omega*i
-
-# temporary fix for lengths TO CHANGE
-    lengths_rapp = np.zeros(n_pend)
-    for i in range(n_pend):
-        lengths_rapp[i] = (lengths[0]+i*perturbation_lengths[0])/lengths[0]
-
+    n_pend = len(pends)
+    pend_def = pends[0]
+    pends_b = copy.deepcopy(pends)
+    n = pend_def.type_pend
     f_n = { 1: f_single, 2: f_double, 3: f_triple}
+    # mode 0 : thetas mode 1: omegas  mode 2: 
+    track_segments_plot = np.zeros((n_pend, pend_def.get_fps(), 2))
+
+    segments = np.zeros((n_pend, (n+1), 2))
 
     # for graphing
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.axis('off')
-    l_max = np.sum((lengths*1.2 + n_pend*perturbation_lengths) [0:n:1])
+    l_max = np.sum((pends[n_pend-1].lengths[0:n:1]))*1.2 
     ax.set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
 
     p_segments = np.zeros((n_pend, 0, 2))
     track_segments = np.zeros((n_pend, 0, 2))
     color_lines = plt.cm.rainbow(np.linspace(0, 1, n_pend))
-    pends = collections.LineCollection(p_segments, color = 'black')
-    track_pends = collections.LineCollection(track_segments, colors = color_lines)
-    ax.add_collection(track_pends)
-    ax.add_collection(pends)
+    line_pends = collections.LineCollection(p_segments, color = 'black')
+    line_track_pends = collections.LineCollection(track_segments, colors = color_lines)
+    ax.add_collection(line_track_pends)
+    ax.add_collection(line_pends)
     points, = plt.plot([], [],'ok', lw = '1')
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+    
+    q_pend = np.empty((n_pend, 3))
+    x_pend = np.empty((n_pend, 3))
+    y_pend = np.empty((n_pend, 3))
 
     def init():
-        pends.set_segments(np.zeros((n_pend, 0, 2)))
-        track_pends.set_segments(np.zeros((n_pend, 0, 2)))
+        line_pends.set_segments(np.zeros((n_pend, 0, 2)))
+        line_track_pends.set_segments(np.zeros((n_pend, 0, 2)))
         points.set_data([], [])
         time_text.set_text('')
 
-        return pends, points, track_pends, time_text
+        return line_pends, points, line_track_pends, time_text
 
     def animate(i):
-        global t, lengths, masses, g
-        nonlocal u0_pend, um1_pend
         position = np.zeros((n, 2, n_pend))
-        fps_jump = max(int((1/h)/frameforsec), 1) # how much should i jump writing frames to get at most frameforsec photos in a second
 
-        for x in range(fps_jump):
+        for x in range(pend_def.fps_jump()):
             for o in range(n_pend):
-                (u0_pend[o], um1_pend[o]) = f(f_n[n], [u0_pend[o], um1_pend[o]])
-                lengths += perturbation_lengths
-                masses  += perturbation_masses
-                g       += perturbation_gravity
+                if (pends[o].f_int == two_step_adams_bashforth):
+                    ((thetas, omegas), (thetas_b, omegas_b))  = pends[o].f_int(pends[o], pends_b[o])
+                    pends[o].set_u(thetas, omegas)
+                    pends_b[o].set_u(thetas_b, omegas_b)
+                    pends[o].increment_time()
+                    pends_b[o].increment_time()
+                else:    
+                    thetas, omegas = pends[o].f_int(pends[o])
+                    pends[o].set_u(thetas, omegas)
+                    pends[o].increment_time()
 
-            t+=h
-            masses  -= perturbation_masses*n_pend
-            lengths -= perturbation_lengths*n_pend
-            g       -= perturbation_gravity*n_pend
-
-        x_pend, y_pend = get_xy_coords(u0_pend[:,:3].T)*lengths_rapp
-        track_segments_plot[0:n_pend:1][:,i][:,0] = x_pend[n-1] 
-        track_segments_plot[0:n_pend:1][:,i][:,1] = y_pend[n-1]
+        for o in range(n_pend):
+                q_pend[o] = pends[o].get_q()
+                x_pend[o], y_pend[o]  = pends[o].get_xy_coords()
+        track_segments_plot[0:n_pend:1][:,i][:,0] = x_pend[:,n-1] 
+        track_segments_plot[0:n_pend:1][:,i][:,1] = y_pend[:,n-1]
         p_segments = xy_to_segment(x_pend, y_pend, n, n_pend)
         lines = xy_to_line(x_pend, y_pend, n, n_pend)
-        pends.set_segments(p_segments)
-        track_pends.set_segments(track_segments_plot[:, 0:i+1])
-        time_text.set_text('Time = %.1f' % (t))
+        line_pends.set_segments(p_segments)
+        line_track_pends.set_segments(track_segments_plot[:, 0:i+1])
+        time_text.set_text('Time = %.1f' % (pend_def.time))
         x_point, y_point = lines.reshape(-1, 2).T
         points.set_data(x_point, y_point)
-        percentage(i)
-        return pends, points, track_pends, time_text
+        pend_def.percentage()
+        return line_pends, points, line_track_pends, time_text
 
-    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/frameforsec, h*1000), frames = int(min(frameforsec * time_simulation, time_simulation/h)), repeat = False, blit = True)
-    anim.save(output)
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend_def.frameforsec, pend_def.h_step*1000), frames = pend_def.get_fps(), repeat = False, blit = True)
+    anim.save(pend_def.output)
     print(" Done             ")
     return anim
+
+def xy_to_line(x, y, n, n_pend):
+    list_line = np.zeros((n, n_pend, 2))
+    for j in range(n):
+        for i in range(n_pend):
+            list_line[j][i][0] = x[i][j]
+            list_line[j][i][1] = y[i][j]
+    return list_line 
+
+def xy_to_segment(x, y, n, n_pend):
+    segments = np.zeros((n_pend, (n+1), 2))
+    for i in range(n_pend):
+        segments[i][0][0] = 0
+        segments[i][0][1] = 0
+        
+    for j in range(n):
+        for i in range(n_pend):
+            segments[i][j+1][0] = x[i][j]
+            segments[i][j+1][1] = y[i][j]
+    return segments
+
 

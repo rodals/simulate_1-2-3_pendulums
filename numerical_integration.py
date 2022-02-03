@@ -1,99 +1,177 @@
 ########## Methods for numerical integration ##########
+import numpy as np
+import copy
+from pendulums_functions import *
+from utilities import implicit
 
-def forward_euler(f, u):
-    u[0] = u[0] + f(u[0] , t)*h
-    return u
-
-def backward_euler(f, u):
-    s = 1e-12
-    c = np.zeros(6)
-    diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
-    while (np.abs(diff)>s).any():
-        diff = c
-        c =  f(u[0] + c, t+h)*h
-        diff -= c
-    u[0] += c        
-    return u
-
-def semi_implicit_euler(f, u):
-    u[0][3:6] += f(u[0] , t)[3:6]*h
-    u[0][0:3] += f(u[0] , t)[0:3]*h
-    return u
-
-def symplectic_euler(f, u):
-    f_q = {f_single: single_d_q_H, f_double: double_d_q_H, f_triple: triple_d_q_H}
-    f_p = {f_single: single_d_p_H, f_double: double_d_p_H, f_triple: triple_d_p_H}
-    q = u[0][0:3]
-    p = u[0][3:6]
-    s = 1e-12
-# if non separable implicit, otherwise it automatically exit:  p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n ) 
-    p  -= implicit(f_q[f], q, p, h, s, "p")
-#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
-    q  += f_p[f]( q, p)*h
-    u[0][0:3] = q
-    u[0][3:6] = p
-    return u
-
-def stormer_verlet(f, u):
-    f_q = {f_single: single_d_q_H, f_double: double_d_q_H, f_triple: triple_d_q_H}
-    f_p = {f_single: single_d_p_H, f_double: double_d_p_H, f_triple: triple_d_p_H}
-    q = u[0][0:3]
-    p = u[0][3:6]
-    s = 1e-12
-    p  -= implicit(f_q[f], q, p, h/2, s, "p")
-
-    dq1  = f_p[f]( q, p)*h/2
-    q  += implicit(f_p[f], q, p, h/2, s, "q")
-    q += dq1
-
-    p -= f_q[f](q, p)*h/2
-    u[0][0:3] = q
-    u[0][3:6] = p
-    return u
-
-def velocity_verlet(f, u):
-    y_1 = copy.deepcopy(u[0])
-    y_1[0:3] = u[0][0:3] + u[0][3:6]*h  + f(u[0], t)[3:6]*h*h/2
-    y_1[3:6] = u[0][3:6] + (f(u[0], t)[3:6] + f(y_1, t+h)[3:6])*h/2
-    u[0] = copy.deepcopy(y_1)
-    return u
-
-def two_step_adams_bashforth(f, u):
-    global t
-    # multistep, need a second point
-    if t == 0:
-        u[1] = runge_kutta4(f,u)[0]
-        t+=h
-    temp = u[1] + (3./2)*h*f(u[1], t) - (1./2)*h*f(u[0], t-h)
-    u[0] = u[1]
-    u[1] = copy.deepcopy(temp)
-    return u
-
-def crank_nicolson(f, u):
-    s = 1e-12
-    c = np.zeros(6)
-    diff = np.array([2*s, 2*s, 2*s, 2*s, 2*s, 2*s])
-    u[0] += f(u[0], t)*h/2
-    while (np.abs(diff)>s).any():
-        diff = c
-        c =  f(u[0] + c, t+h)*h/2
-        diff -= c
-    u[0] += c        
-    return u
-           
-def runge_kutta4(pend):
+def forward_euler(pend):
     f = pend.f_accel()
-    u = pend.get_u()
+    q = pend.get_q()
+    p = pend.get_p()
     t = pend.time
     h = pend.h_step
     masses = pend.masses
     lengths = pend.lengths
     g = pend.g
 
-    k1 = f(u, t, lengths, masses, g)*h
-    k2 = f(u + k1/2, t +h/2, lengths, masses, g)*h
-    k3 = f(u + k2/2 , t + h/2, lengths, masses, g)*h
-    k4 = f(u + k3 , t + h, lengths, masses, g)*h
-    u = (u + (k1 + 2*k2 + 2*k3 + k4)/6.0)
-    return u[0:3], u[3:6]
+    inc_q, inc_p = f(q, p, t, lengths, masses, g)
+    q += inc_q*h
+    p += inc_p*h
+    return q, p
+
+def backward_euler(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+    s = 1e-12
+    c_q, c_p = np.zeros(3), np.zeros(3)
+    diff_q, diff_p = np.array([2*s, 2*s, 2*s]), np.array([ 2*s, 2*s, 2*s])
+    while ((np.abs(diff_q)>s).any() and (np.abs(diff_p)>s).any()):
+        diff_q, diff_p = c_q, c_p
+        c_q, c_p =  f(q + c_q, p + c_p, t+h, lengths, masses, g)
+        c_q *= h
+        c_p *= h
+        diff_q -= c_q
+        diff_p -= c_p
+    q += c_q
+    p += c_p
+    return q, p
+ 
+def semi_implicit_euler(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+
+    p += f(q, p, t, lengths, masses, g)[1]*h
+    q += f(q, p, t, lengths, masses, g)[0]*h
+    return q, p
+
+def symplectic_euler(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+    f_q = {f_single: single_d_q_H, f_double: double_d_q_H, f_triple: triple_d_q_H}
+    f_p = {f_single: single_d_p_H, f_double: double_d_p_H, f_triple: triple_d_p_H}
+    s = 1e-12
+
+# if non separable implicit, otherwise it automatically exit:  p_{n+1} = p_n - h * d_{q_i} H( p_{n+1}, q_n ) 
+    p  -= implicit(f_q[f], q, p, t, lengths, masses, g, h, s, "p")
+#  q_{n+1} = q_n - h * d_{p_i} H( p_{n+1}, q_n )
+    q  += f_p[f]( q, p, t, lengths, masses, g)*h
+    return q, p
+
+def stormer_verlet(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+    s = 1e-12
+    f_q = {f_single: single_d_q_H, f_double: double_d_q_H, f_triple: triple_d_q_H}
+    f_p = {f_single: single_d_p_H, f_double: double_d_p_H, f_triple: triple_d_p_H}
+
+    p  -= implicit(f_q[f], q, p, t, lengths, masses, g, h/2, s, "p")
+    dq1  = f_p[f]( q, p, t, lengths, masses, g)*h/2
+    q  += implicit(f_p[f], q, p, t, lengths, masses, g, h/2, s, "q")
+    q += dq1
+    p -= f_q[f](q, p, t, lengths, masses, g)*h/2
+    return q, p
+
+def velocity_verlet(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+
+    q_1 = copy.deepcopy(q)
+    p_1 = copy.deepcopy(p)
+    q_1 = q + p*h  + f(q, p, t, lengths, masses, g)[1]*h*h/2
+    p_1 = p + (f(q, p, t, lengths, masses, g)[1] + f(q_1, p_1, t+h, lengths, masses, g)[1])*h/2
+    return q_1, p_1
+
+def two_step_adams_bashforth(pend, pend_b):
+    f = pend.f_accel()
+    q_b = pend_b.get_q()
+    p_b = pend_b.get_p()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+
+    # multistep, need a second point
+    if t == 0:
+        q, p = runge_kutta4(pend)
+        pend.increment_time()
+    q_1  = q + (3./2)*h*f(q, p, t, lengths, masses, g)[0] - (1./2)*h*f(q_b, p_b, pend_b.t, lengths, masses, g)[0]
+    p_1 = p + (3./2)*h*f(q, p, t, lengths, masses, g)[1] - (1./2)*h*f(q_b, p_b, pend_b.t, lengths, masses, g)[1]
+    return ((q_1, p_1), (q, p))
+
+def crank_nicolson(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+    s = 1e-12
+    c_q, c_p = np.zeros(3), np.zeros(3)
+    diff_q, diff_p = np.array([2*s, 2*s, 2*s]), np.array([ 2*s, 2*s, 2*s])
+    q_0, p_0 = f(q, p, t, lengths, masses, g)
+    q   += q_0 * h/2
+    p   += p_0 * h/2
+    while ((np.abs(diff_q)>s).any() and (np.abs(diff_p)>s).any()):
+        diff_q, diff_p = c_q, c_p
+        c_q, c_p =  f(q + c_q, p + c_p, t+h, lengths, masses, g)
+        c_q *= h/2
+        c_p *= h/2
+        diff_q -= c_q
+        diff_p -= c_p
+    q += c_q
+    p += c_p
+    return q, p
+           
+def runge_kutta4(pend):
+    f = pend.f_accel()
+    q = pend.get_q()
+    p = pend.get_p()
+    t = pend.time
+    h = pend.h_step
+    masses = pend.masses
+    lengths = pend.lengths
+    g = pend.g
+
+    k1_q, k1_p = f(q, p, t, lengths, masses, g)
+    k2_q, k2_p = f(q + k1_q*h/2, p + k1_p*h/2, t + h/2, lengths, masses, g)
+    k3_q, k3_p = f(q + k2_q*h/2, p + k2_p*h/2, t + h/2, lengths, masses, g)
+    k4_q, k4_p = f(q + k3_q*h, p + k3_p*h, t + h, lengths, masses, g)
+    q = (q + (k1_q + 2*k2_q + 2*k3_q + k4_q)*h/6.0)
+    p = (p + (k1_p + 2*k2_p + 2*k3_p + k4_p)*h/6.0)
+    return q, p
 

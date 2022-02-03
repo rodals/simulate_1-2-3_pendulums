@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import numpy as np
 from  time import perf_counter
+import copy
 #files
 import f_print as pr
 import utilities
@@ -32,7 +33,7 @@ def main():
 
     ## for the butterfly effect
     perturb = 1e-4
-    n_pend = 40
+    n_pends = 40
 
     # dictionary to simplify life for input n other things
     n_pend_string = {1: "single", 2: "double", 3: "triple"}
@@ -79,7 +80,7 @@ def main():
         frameforsec = right_input(f"Fps [{frameforsec}] :  ", float, frameforsec)
      
     elif y_n != "y" and y_n:
-            print("wrong input.")
+            print("Wrong input.")
             exit()
 
     mode = right_input('''
@@ -95,19 +96,26 @@ def main():
         pr.running(dict_animation[mode].__name__, n_pend_string[type_pend], f_int.__name__)
 
     elif mode == 3: 
-        n_mode =  right_input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths (visualization works only for same lengths pendulum) \n   5 Gravity \n   0 Nothing \n  ", double, 1)
+        n_mode =  right_input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths (visualization works only for same lengths pendulum) \n   5 Gravity \n   0 Nothing \n  ", float, 1)
 
-        perturb = right_input("Module of perturbation? [{perturb} grad | {perturb} grad/s | {perturb} Kg | {perturb} m | {perturb} m/s^2]   ", float, perturb)
-        n_pends = right_input("Number of pendulums simulated? [n_pends]", int, n_pends)
-        fileoutput = "{dict_animation[mode].__name__}_{n_pend_string[n_pends]}-perturb_{dict_mode[n_mode]}-{perturb}-{f_int.__name__}.mp4"
+        perturb = right_input(f"Module of perturbation? [{perturb} grad | {perturb} grad/s | {perturb} Kg | {perturb} m | {perturb} m/s^2]   ", float, perturb)
+        n_pends = right_input(f"Number of pendulums simulated? [n_pends]", int, n_pends)
+        fileoutput = f"{dict_animation[mode].__name__}_{n_pend_string[type_pend]}-perturb_{dict_mode[n_mode]}-{perturb}-{f_int.__name__}.mp4"
         fileoutput = right_input("Name output gif [enter to default]:   ", str, fileoutput)
+        print(fileoutput)
+        set_n_mode = { 1: n_Pendulum.set_q, 2: n_Pendulum.set_p, 3: n_Pendulum.set_masses, 4: n_Pendulum.set_lengths, 5: n_Pendulum.set_g}
+        var_n_mode = { 1: thetas0, 2: omegas0, 3: masses, 4: lengths, 5: g}
         pend = [n_Pendulum(h_step, 0, time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0) for i in range(n_pends)]
-        pr.running()
-
+        for i in range(n_pends):
+            if (not n_mode == 3):
+                set_n_mode[n_mode](pend[i], var_n_mode[n_mode] + perturb * i)
+            else: 
+                set_n_mode[n_mode](pend[i], np.array([masses[0] + perturb*i, masses[1], masses[2]]))
 
     else: bye()
 
     t_start = perf_counter()
+    pend[0].running(dict_animation[mode].__name__)
     dict_animation[mode](pend)
     t_end = perf_counter()
 

@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from pendulums_functions import *
 ''' class general for every simulation'''
 class Simulation:
@@ -25,15 +26,15 @@ class n_Pendulum(Simulation):
             self.thetas    = angle_mod(thetas)
             self.omegas    = omegas
 
-    def running(self):
-        print(f"\n Running {self.animation.__name__} {n_Pendulum} pendulum propagated with {self.f_int}")
+    def running(self, anim_name):
+        print(f"\n Running {anim_name} {self} pendulum propagated with {self.f_int.__name__}")
 
     def percentage(self):
         print(f"  {int(100*self.time/self.time_max)} % Processing  ", end="\r") 
 
     def __str__(self):
         n_pend_string = {1: "single", 2: "double", 3: "triple"}
-        return n_pend_string[type_pend]
+        return n_pend_string[self.type_pend]
     def f_accel(self):
         f_n = { 1: f_single, 2: f_double, 3: f_triple}
         return f_n[self.type_pend]
@@ -45,11 +46,22 @@ class n_Pendulum(Simulation):
     def get_u(self):
         return np.concatenate((self.thetas, self.omegas), axis = None)
     def set_u(self, thetas, omegas):
-        print(self.thetas)
         self.thetas = angle_mod(thetas)
         self.omegas = omegas
-        print(self.thetas)
-
+    def get_q(self):
+        return self.thetas
+    def get_p(self):
+        return self.omegas
+    def set_q(self, q):
+        self.thetas = angle_mod(q)
+    def set_p(self, p):
+        self.omegas = p
+    def set_masses(self, masses):
+        self.masses = masses
+    def set_lengths(self, lengths):
+        self.lengths = lengths
+    def set_g(self, g):
+        self.g = g
     def get_xy_coords(self):
         x1 = self.lengths[0]*np.sin(self.thetas[0])
         x2 = self.lengths[1]*np.sin(self.thetas[1]) + x1
@@ -66,7 +78,7 @@ class n_Pendulum(Simulation):
         r1 = self.lengths[0]
         r2 = np.sqrt(x[1]*x[1] + y[1]*y[1]) 
         r3 = np.sqrt(x[2]*x[2] + y[2]*y[2])
-        return (angle_mod(p[0]), angle_mod(p[1]), angle_mod(p[2])), (r1, r2, r3)
+        return (self.thetas[0], self.thetas[1], self.thetas[2]), (r1, r2, r3)
 
     def get_xy_velocity(self):
         dx1 = -self.lengths[0] * np.cos(self.thetas[0])*self.omegas[0]

@@ -4,14 +4,14 @@ import numpy as np
 # because the Hamiltonian is not-separable which means that the U of the system only depends from q_i and/or T of the system depends only from p_i.
 
 ## single pendulum
-def single_d_q_H(q, p, lengths, masses, g):
+def single_d_q_H(q, p, t, lengths, masses, g):
     dq = np.zeros(3)
     (q1, q2, q3) = q
     (p1, p2, p3) = p
     dq[0] = masses[0]*g*lengths[0]*np.sin(q1)
     return dq
 
-def single_d_p_H(q, p, lengths, masses, g):
+def single_d_p_H(q, p, t, lengths, masses, g):
     dp = np.zeros(3)
     (q1, q2, q3) = q
     (p1, p2, p3) = p
@@ -19,7 +19,7 @@ def single_d_p_H(q, p, lengths, masses, g):
     return dp
 
 ## double pendulum
-def double_d_p_H(q, p, lengths, masses, g):
+def double_d_p_H(q, p, t, lengths, masses, g):
     l1, l2, l3 = lengths[0], lengths[1], lengths[2]
     m1, m2, m3 = masses[0], masses[1], masses[2]
     dp = np.zeros(3)
@@ -30,7 +30,7 @@ def double_d_p_H(q, p, lengths, masses, g):
     dp[1] =  (2*l1**2*(m1 + m2)*p2 - 2*l1*l2*m2*p1*np.cos(q1 - q2))/(2*l1**2*l2**2*   m2*(m1 + m2 - m2*np.cos(q1 - q2)**2))
     return dp
 
-def double_d_q_H(q, p, lengths, masses, g):
+def double_d_q_H(q, p, t, lengths, masses, g):
     l1, l2, l3 = lengths[0], lengths[1], lengths[2]
     m1, m2, m3 = masses[0], masses[1], masses[2]
     dq = np.zeros(3)
@@ -43,7 +43,7 @@ def double_d_q_H(q, p, lengths, masses, g):
     return dq
 
 ## triple pendulum
-def triple_d_q_H(q, p, lengths, masses, g):
+def triple_d_q_H(q, p, t, lengths, masses, g):
     dq = np.zeros(3)
     (q1, q2, q3) = q
     (p1, p2, p3) = p 
@@ -55,7 +55,7 @@ def triple_d_q_H(q, p, lengths, masses, g):
     dq[2] = (2*m1*(4*l2**2*l3**2*m2*m3*p1**2 + 2*l2**2*l3**2*m3**2*p1**2 + 4*l1**2*l3**2*m1*m3*p2**2 +     4*l1**2*l3**2*m2*m3*p2**2 + 2*l1**2*l3**2*m3**2*p2**2 + 4*l1**2*l2**2*m1*m2*p3**2 +     2*l1**2*l2**2*m2**2*p3**2 + 4*l1**2*l2**2*m1*m3*p3**2 + 4*l1**2*l2**2*m2*m3*p3**2 +     2*l1**2*l2**2*m3**2*p3**2 - 2*g*l1**3*l2**2*l3**2*m3*(m2*(m2 + m3)**2 + m1**2*(2*m2 + m3) +       m1*(3*m2**2 + 4*m2*m3 + m3**2))*np.cos(q1) + g*l1**2*l2**3*l3**2*m2*m3*(m2 + m3)**2*np.cos(2*q1 - 3*q2) +     g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2) + 2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2**2*m3*np.cos(3*q1 - 2*q2) +     g*l1**3*l2**2*l3**2*m2**3*m3*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(3*q1 - 2*q2) +     2*g*l1**3*l2**2*l3**2*m2**2*m3**2*np.cos(3*q1 - 2*q2) + g*l1**3*l2**2*l3**2*m2*m3**3*np.cos(3*q1 - 2*q2) -     8*l1*l2*l3**2*m2*m3*p1*p2*np.cos(q1 - q2) - 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 - q2) -     2*l1**2*l2**2*m2**2*p3**2*np.cos(2*(q1 - q2)) - 4*l1**2*l2**2*m2*m3*p3**2*np.cos(2*(q1 - q2)) -     2*l1**2*l2**2*m3**2*p3**2*np.cos(2*(q1 - q2)) + g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(2*q1 - q2) +     2*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(2*q1 - q2) + g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(2*q1 - q2) -     4*g*l1**2*l2**3*l3**2*m1*m2**2*m3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2**3*m3*np.cos(q2) -     6*g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2) - 4*g*l1**2*l2**3*l3**2*m2**2*m3**2*np.cos(q2) -     2*g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2) - 2*g*l1**2*l2**3*l3**2*m2*m3**3*np.cos(q2) +     g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - 3*q3) + g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(q2 - 2*q3) + 4*l1*l2*l3**2*m3**2*p1*p2*np.cos(q1 + q2 - 2*q3) +     g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m2*m3**2*     np.cos(q1 + 2*q2 - 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*np.cos(q1 + 2*q2 - 2*q3) +     g*l1**2*l2**3*l3**2*m1*m2*m3**2*np.cos(3*q2 - 2*q3) + g*l1**2*l2**3*l3**2*m1*m3**3*np.cos(3*q2 - 2*q3) -     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - q3) - 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - q3) -     2*l1**2*l3**2*m3**2*p2**2*np.cos(2*(q1 - q3)) + g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 - q3) +     g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(2*q1 - 2*q2 - q3) + 4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(2*q1 - q2 - q3) +     4*l1**2*l2*l3*m3**2*p2*p3*np.cos(2*q1 - q2 - q3) - 8*l1**2*l2*l3*m1*m3*p2*p3*np.cos(q2 - q3) -     4*l1**2*l2*l3*m2*m3*p2*p3*np.cos(q2 - q3) - 4*l1**2*l2*l3*m3**2*p2*p3*np.cos(q2 - q3) -     2*l2**2*l3**2*m3**2*p1**2*np.cos(2*(q2 - q3)) + g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(2*q2 - q3) -     4*g*l1**2*l2**2*l3**3*m1*m2*m3**2*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(q3) -     2*g*l1**2*l2**2*l3**3*m1*m3**3*np.cos(q3) - 2*g*l1**2*l2**2*l3**3*m2*m3**3*np.cos(q3) +     4*l1*l2**2*l3*m2*m3*p1*p3*np.cos(q1 - 2*q2 + q3) + 4*l1*l2**2*l3*m3**2*p1*p3*np.cos(q1 - 2*q2 + q3) +     g*l1**2*l2**2*l3**3*m2**2*m3**2*np.cos(2*q1 - 2*q2 + q3) + g*l1**2*l2**2*l3**3*m2*m3**3*     np.cos(2*q1 - 2*q2 + q3) + g*l1**3*l2**2*l3**2*m1**2*m3**2*np.cos(q1 - 2*q2 + 2*q3) +     g*l1**3*l2**2*l3**2*m1*m2*m3**2*np.cos(q1 - 2*q2 + 2*q3) + g*l1**3*l2**2*l3**2*m1*m3**3*     np.cos(q1 - 2*q2 + 2*q3))*np.sin(2*(q2 - q3)) +   l3*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) - m1*m3*np.cos(2*(q2 - q3)))*   (3*g*l1**2*l2**2*l3**2*m1*m3**2*np.sin(2*q2 - 3*q3) - 4*l1**2*l3*m3*p2**2*np.sin(2*(q1 - q3)) +     l2*(2*g*l1**2*l2**2*l3*m1*m3*(m2 + m3)*np.sin(q2 - 2*q3) + 8*l1*l3*m3*p1*p2*np.sin(q1 + q2 - 2*q3) +       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 + 2*q2 - 2*q3) +       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 + 2*q2 - 2*q3) + 2*g*l1**2*l2**2*l3*m1*m2*m3*np.sin(3*q2 - 2*q3) +       2*g*l1**2*l2**2*l3*m1*m3**2*np.sin(3*q2 - 2*q3) - 4*l1*l2*m2*p1*p3*np.sin(q1 - q3) -       4*l1*l2*m3*p1*p3*np.sin(q1 - q3) + g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 - q3) +       g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 - q3) + 4*l1**2*m2*p2*p3*np.sin(2*q1 - q2 - q3) +       4*l1**2*m3*p2*p3*np.sin(2*q1 - q2 - q3) - 8*l1**2*m1*p2*p3*np.sin(q2 - q3) -       4*l1**2*m2*p2*p3*np.sin(q2 - q3) - 4*l1**2*m3*p2*p3*np.sin(q2 - q3) -       4*l2*l3*m3*p1**2*np.sin(2*(q2 - q3)) + g*l1**2*l2*l3**2*m1*m3**2*np.sin(2*q2 - q3) +       4*g*l1**2*l2*l3**2*m1*m2*m3*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2**2*m3*np.sin(q3) +       2*g*l1**2*l2*l3**2*m1*m3**2*np.sin(q3) + 2*g*l1**2*l2*l3**2*m2*m3**2*np.sin(q3) -       4*l1*l2*m2*p1*p3*np.sin(q1 - 2*q2 + q3) - 4*l1*l2*m3*p1*p3*np.sin(q1 - 2*q2 + q3) -       g*l1**2*l2*l3**2*m2**2*m3*np.sin(2*q1 - 2*q2 + q3) - g*l1**2*l2*l3**2*m2*m3**2*np.sin(2*q1 - 2*q2 + q3) -       2*g*l1**3*l2*l3*m1**2*m3*np.sin(q1 - 2*q2 + 2*q3) - 2*g*l1**3*l2*l3*m1*m2*m3*np.sin(q1 - 2*q2 + 2*q3) -       2*g*l1**3*l2*l3*m1*m3**2*np.sin(q1 - 2*q2 + 2*q3))))/ (2*l1**2*l2**2*l3**2*(2*m1*m2 + m2**2 + m1*m3 + m2*m3 - m2*(m2 + m3)*np.cos(2*(q1 - q2)) -     m1*m3*np.cos(2*(q2 - q3)))**2)
     return dq
 
-def triple_d_p_H(q, p, lengths, masses, g):
+def triple_d_p_H(q, p, t, lengths, masses, g):
     dp = np.zeros(3)
     (q1, q2, q3) = q
     (p1, p2, p3) = p
@@ -69,15 +69,15 @@ def triple_d_p_H(q, p, lengths, masses, g):
 
 #### function for integrating, these calculate  F_i/m = a_i and returns [v_i, a_i] because of simplicity for multiplication in the function for integrating
 
-def f_single( u , t, lengths, masses, g):
-	theta_1 = u[0]
-	w1 = u[3]      
+def f_single( q, p , t, lengths, masses, g):
+	theta_1 = q[0]
+	w1 = p[0]      
 	dw1 = -g/lengths[0] * np.sin(theta_1)
-	return np.array([ w1, 0, 0, dw1, 0, 0])
+	return np.array([ w1, 0, 0]), np.array([ dw1, 0, 0]) 
 
-def f_double( u , t, lengths, masses, g):
-    theta_1, theta_2 = u[0], u[1]
-    w1, w2 = u[3], u[4]
+def f_double( q, p , t, lengths, masses, g):
+    theta_1, theta_2 = q[0], q[1]
+    w1, w2 = p[0], p[1]
 
     theta_12 = theta_1 - theta_2
     sin_1, sin_2 = (np.sin(theta_1), np.sin(theta_2))
@@ -90,11 +90,11 @@ def f_double( u , t, lengths, masses, g):
     dw1 = (-sin_12*(masses[1]*lengths[0]*w1**2 * cos_12 + masses[1]*lengths[1]*w2**2) - g*((masses[0]+masses[1])*sin_1 - masses[1]*sin_2 * cos_12))/(lengths[0]*(masses[0] + masses[1]* sin_12**2))
     dw2 = (sin_12 * ((masses[0]+masses[1])*lengths[0]*w1**2 + masses[1]*lengths[1]*w2**2 * cos_12) + g*((masses[0]+masses[1])*sin_1 * cos_12 - (masses[0]+masses[1])*sin_2))/(lengths[1]*(masses[0]+masses[1]*sin_12**2))   
 
-    return np.array([ w1, w2, 0, dw1, dw2, 0])
+    return np.array([ w1, w2, 0]), np.array([dw1, dw2, 0])
 
-def f_triple(u, t, lengths, masses, g):
-	theta_1, theta_2, theta_3 = u[0], u[1], u[2]
-	w1, w2, w3 = u[3], u[4], u[5]
+def f_triple(q, p, t, lengths, masses, g):
+	theta_1, theta_2, theta_3 = q[0], q[1], q[2]
+	w1, w2, w3 = p[0], p[1], p[2]
 
 	theta_21 = theta_2 - theta_1
 	theta_31 = theta_3 - theta_1
@@ -110,6 +110,6 @@ def f_triple(u, t, lengths, masses, g):
 	dw2 = (-masses[2]*(g*sin_3 + lengths[0]*w1**2*(cos_1*sin_3 - cos_3*sin_1) + lengths[1]*w2**2*(cos_2*sin_3 - cos_3*sin_2))*(-cos_21*cos_31*masses[1] - cos_21*cos_31*masses[2] + cos_32*masses[0] + cos_32*masses[1] + cos_32*masses[2]) - (cos_21*masses[1] + cos_21*masses[2] - cos_31*cos_32*masses[2])*(g*masses[0]*sin_1 + g*masses[1]*sin_1 + g*masses[2]*sin_1 - lengths[1]*masses[1]*w2**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[1]*masses[2]*w2**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[2]*masses[2]*w3**2*(cos_1*sin_3 - cos_3*sin_1)) + (-cos_31**2*masses[2] + masses[0] + masses[1] + masses[2])*(g*masses[1]*sin_2 + g*masses[2]*sin_2 + lengths[0]*masses[1]*w1**2*(cos_1*sin_2 - cos_2*sin_1) + lengths[0]*masses[2]*w1**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[2]*masses[2]*w3**2*(cos_2*sin_3 - cos_3*sin_2)))/(lengths[1]*(cos_21**2*masses[1]**2 + 2*cos_21**2*masses[1]*masses[2] + cos_21**2*masses[2]**2 - 2*cos_21*cos_31*cos_32*masses[1]*masses[2] - 2*cos_21*cos_31*cos_32*masses[2]**2 + cos_31**2*masses[1]*masses[2] + cos_31**2*masses[2]**2 + cos_32**2*masses[0]*masses[2] + cos_32**2*masses[1]*masses[2] + cos_32**2*masses[2]**2 - masses[0]*masses[1] - masses[0]*masses[2] - masses[1]**2 - 2*masses[1]*masses[2] - masses[2]**2))
 
 	dw3 = ((g*sin_3 + lengths[0]*w1**2*(cos_1*sin_3 - cos_3*sin_1) + lengths[1]*w2**2*(cos_2*sin_3 - cos_3*sin_2))*(-cos_21**2*masses[1]**2 - 2*cos_21**2*masses[1]*masses[2] - cos_21**2*masses[2]**2 + masses[0]*masses[1] + masses[0]*masses[2] + masses[1]**2 + 2*masses[1]*masses[2] + masses[2]**2) + (cos_21*cos_32*masses[1] + cos_21*cos_32*masses[2] - cos_31*masses[1] - cos_31*masses[2])*(g*masses[0]*sin_1 + g*masses[1]*sin_1 + g*masses[2]*sin_1 - lengths[1]*masses[1]*w2**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[1]*masses[2]*w2**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[2]*masses[2]*w3**2*(cos_1*sin_3 - cos_3*sin_1)) - (-cos_21*cos_31*masses[1] - cos_21*cos_31*masses[2] + cos_32*masses[0] + cos_32*masses[1] + cos_32*masses[2])*(g*masses[1]*sin_2 + g*masses[2]*sin_2 + lengths[0]*masses[1]*w1**2*(cos_1*sin_2 - cos_2*sin_1) + lengths[0]*masses[2]*w1**2*(cos_1*sin_2 - cos_2*sin_1) - lengths[2]*masses[2]*w3**2*(cos_2*sin_3 - cos_3*sin_2)))/(lengths[2]*(cos_21**2*masses[1]**2 + 2*cos_21**2*masses[1]*masses[2] + cos_21**2*masses[2]**2 - 2*cos_21*cos_31*cos_32*masses[1]*masses[2] - 2*cos_21*cos_31*cos_32*masses[2]**2 + cos_31**2*masses[1]*masses[2] + cos_31**2*masses[2]**2 + cos_32**2*masses[0]*masses[2] + cos_32**2*masses[1]*masses[2] + cos_32**2*masses[2]**2 - masses[0]*masses[1] - masses[0]*masses[2] - masses[1]**2 - 2*masses[1]*masses[2] - masses[2]**2))
-	return np.array([ w1, w2, w3 , dw1, dw2, dw3])
+	return np.array([ w1, w2, w3]), np.array([dw1, dw2, dw3])
 
 

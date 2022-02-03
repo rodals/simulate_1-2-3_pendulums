@@ -1,6 +1,6 @@
+#### usefull function 
 import numpy as np
 import copy
-#### usefull function 
 
 # function to keep angle between -pi and pi
 def angle_mod(theta):
@@ -12,14 +12,14 @@ def angle_mod(theta):
     return theta
 
 # function to calculate functions implicitly
-def implicit(f, q, p, h_inc,  s, p_or_q):
+def implicit(f, q, p, t, lengths, masses, g, h_inc,  s, p_or_q):
     diff = np.array([2*s, 2*s, 2*s]) 
     d = np.zeros(3)
     count = 0
     count_max = 500
     while( (np.abs(diff) > s).any() and count < count_max):
-        if(p_or_q =="q"): d1 = f(q+d, p)*h_inc
-        elif(p_or_q =="p"):  d1 = f(q, p-d)*h_inc
+        if(p_or_q =="q"): d1 = f(q+d, p, t, lengths, masses, g)*h_inc
+        elif(p_or_q =="p"):  d1 = f(q, p-d, t, lengths, masses, g)*h_inc
         diff = d1 -  d
         d = copy.deepcopy(d1)
         count+=1
