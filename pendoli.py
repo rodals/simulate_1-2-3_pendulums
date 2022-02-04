@@ -2,14 +2,11 @@
 import numpy as np
 from  time import perf_counter
 import copy
+
 #files
-import f_print as pr
-import utilities
-import numerical_integration as ni
-import pendulums_functions 
-import graphs
-import anime as an
+from anime import *
 from globally import *
+from numerical_integration import *
 
 def main():
     # default initial conditions
@@ -29,7 +26,7 @@ def main():
     # default number of pendulum
     type_pend = 3
     # default method of integration
-    f_int = ni.runge_kutta4
+    f_int = runge_kutta4
 
     ## for the butterfly effect
     perturb = 1e-4
@@ -38,40 +35,50 @@ def main():
     # dictionary to simplify life for input n other things
     n_pend_string = {1: "single", 2: "double", 3: "triple"}
     dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
-    d_f_int = {1:ni.forward_euler, 2:ni.backward_euler, 3:ni.semi_implicit_euler, 4: ni.symplectic_euler, 5:ni.stormer_verlet,  6: ni.velocity_verlet, 7: ni.two_step_adams_bashforth, 8: ni.crank_nicolson, 9: ni.runge_kutta4,}
-    dict_animation = { 1: an.animate_pendulum_simple,2: an.animate_pendulum_detailed, 3: an.the_butterfly_effect}
+    d_f_int = {1:forward_euler, 2:backward_euler, 3:semi_implicit_euler, 4: symplectic_euler, 5:stormer_verlet,  6: velocity_verlet, 7: two_step_adams_bashforth, 8: crank_nicolson, 9: runge_kutta4,}
+    dict_animation = { 1: animate_pendulum_simple,2: animate_pendulum_detailed, 3: the_butterfly_effect}
 
     ####### MENU #######
     n_i =  input('''
-            Method of Numerical integration? - N for working pendulum \n
-            1 Forward Euler - 1, 2, 3 \n
-            2 Backward Euler - 1, 2, 3 \n
-            3 Semi-Implicit Euler - 1 \n
-            4 Symplectic Euler - 1, 2, 3 \n
-            5 Stormer Verlet - 1, 2, 3  \n
-            6 Velocity Verlet - 1 \n   
-            7 Two-step Adams-Bashforth - 1, 2, 3 \n
-            8 Crank Nicolson - 1, 2, 3 \n
-           [9] Runge Kutta 4 - 1, 2, 3 \n''')
+Method of Numerical integration? - N for working pendulum \n
+    1 Forward Euler - 1, 2, 3 \n
+    2 Backward Euler - 1, 2, 3 \n
+    3 Semi-Implicit Euler - 1 \n
+    4 Symplectic Euler - 1, 2, 3 \n
+    5 Stormer Verlet - 1, 2, 3  \n
+    6 Velocity Verlet - 1 \n   
+    7 Two-step Adams-Bashforth - 1, 2, 3 \n
+    8 Crank Nicolson - 1, 2, 3 \n
+   [9] Runge Kutta 4 - 1, 2, 3 \n
+  ->''')
 
     if (n_i.isdigit()): f_int = d_f_int[int(n_i)]
     elif (n_i): bye()
 
-    y_n = input(f"Running with Default configuration? [Y/n] \n   N pendulum = {type_pend} \n   time step = {h_step}s \n   theta_0 = {grads0}grad \n   l = {lengths}m \n   m = {masses}Kg \n   fps = {frameforsec}s**-1 \n   time simulation = {time_simulation}s \n   g = {g}m/s**2 \n").lower()
+    y_n = input(f'''
+Running with Default configuration? [[y]/n] \n   
+    N pendulum = {type_pend} \n   
+    time step = {h_step}s \n   
+    theta_0 = {grads0}grad \n
+    lengths = {lengths}m \n
+    masses = {masses}Kg \n
+    fps = {frameforsec}s**-1 \n
+    time simulation = {time_simulation}s \n
+    g = {g}m/s**2 \n
+   ->''').lower()
     if (y_n == "n"):
-        type_pend = (input("n pendula to simulate? [1, 2, [3]]  "))
+        type_pend = (input("n pendula to simulate? [1, 2, [3]]  \n ->"))
         if( type_pend in ["1", "2", "3"]):
             type_pend = int(type_pend) 
         elif (not type_pend): type_pend = 3
         else: exit("n pendola not supported atm.")
 
         for i in range(type_pend):
-            print(f"Pend n. {i+1} :")
+            print(f"\nPend n. {i+1} :")
             lengths[i] = right_input(f" Length [{lengths[i]}] m:   ", float, lengths[i])
-
             masses[i]  = right_input(f" Mass [{masses[i]}] Kg:   ", float, masses[i])
-            thetas0[i] = right_input(f" Initial theta [{grads0[i]}] Grad:    ", float, thetas0[i])*2*np.pi/360
-            omegas0[i] = right_input(f" Initial omega [{omegas0_grad[i]}] Grad/s:   ", float, omegas0[i])*2*np.pi/360
+            thetas0[i] = right_input(f" Initial theta [{grads0[i]}] Grad:    ", float, grads0[i])*2*np.pi/360
+            omegas0[i] = right_input(f" Initial omega [{omegas0_grad[i]}] Grad/s:   ", float, omegas0_grad[i])*2*np.pi/360
 
 
         g = right_input(f"Gravity [{g}] m/s**2 :   ", float, g)
@@ -84,16 +91,17 @@ def main():
             exit()
 
     mode = right_input('''
-    Select Mode: \n
-           [1] Simple animated pendulum \n
-            2 Detailed animated pendulum \n
-            3 The Butterfly Effect \n''', int, 1)
+Select Mode: \n
+   [1] Simple animated pendulum \n
+    2 Detailed animated pendulum \n
+    3 The Butterfly Effect \n
+  ->''', int, 1)
 
     if mode == 1 or  mode == 2: 
         fileoutput = f"{dict_animation[mode].__name__}_{n_pend_string[type_pend]}_{f_int.__name__}.mp4"
         fileoutput = right_input("Name output gif [enter to default]:   ", str, fileoutput)
         pend = n_Pendulum(h_step, 0., time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0)
-        pr.running(dict_animation[mode].__name__, n_pend_string[type_pend], f_int.__name__)
+        pend.running(dict_animation[mode].__name__)
 
     elif mode == 3: 
         n_mode =  right_input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths (visualization works only for same lengths pendulum) \n   5 Gravity \n   0 Nothing \n  ", float, 1)
@@ -111,11 +119,11 @@ def main():
                 set_n_mode[n_mode](pend[i], var_n_mode[n_mode] + perturb * i)
             else: 
                 set_n_mode[n_mode](pend[i], np.array([masses[0] + perturb*i, masses[1], masses[2]]))
+        pend[0].running(dict_animation[mode].__name__)
 
     else: bye()
 
     t_start = perf_counter()
-    pend[0].running(dict_animation[mode].__name__)
     dict_animation[mode](pend)
     t_end = perf_counter()
 
