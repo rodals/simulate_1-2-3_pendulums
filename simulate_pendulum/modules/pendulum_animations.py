@@ -47,6 +47,7 @@ def animate_pendulum_simple(pend):
 
     time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
     energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+    anim_text = axes_v[position['motion']].text(0.02, 0.98, '', transform=axes_v[position['motion']].transAxes)
 
      
     def init():
@@ -54,7 +55,8 @@ def animate_pendulum_simple(pend):
             ax_pend_lines[0][p].set_data([], [])
         time_text.set_text('')
         energy_text.set_text('')
-        return ax_pend_lines[0]+[time_text, energy_text] 
+        anim_text.set_text(f'{pend.f_int.__name__}')
+        return ax_pend_lines[0]+[time_text, energy_text, anim_text] 
          
 
     def animate(i):
@@ -243,8 +245,9 @@ def animate_pendulum_detailed(pend):
     axes_v[position['energy_k_p']].yaxis.set_label_position("right")
     axes_v[position['energy_k_p']].legend()
 
-    time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
-    energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+    time_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+    energy_text = axes_v[position['motion']].text(0.02, 0.85, '', transform=axes_v[position['motion']].transAxes)
+    anim_text = axes_v[position['motion']].text(0.02, 0.98, '', transform=axes_v[position['motion']].transAxes)
 
     def init():
         for p in range(n):
@@ -258,7 +261,8 @@ def animate_pendulum_detailed(pend):
 
         time_text.set_text('')
         energy_text.set_text('')
-        return (ax_pend_lines[0]+ ax_pend_lines[1] +  pos_x + pos_y + phase +  energy+ [time_text, energy_text])
+        anim_text.set_text(f'{pend.f_int.__name__}')
+        return (ax_pend_lines[0]+ ax_pend_lines[1] +  pos_x + pos_y + phase +  energy+ [time_text, energy_text, anim_text])
          
 
     def animate(i):
@@ -270,6 +274,12 @@ def animate_pendulum_detailed(pend):
                 pend_b.set_u(thetas_b, omegas_b)
                 pend.increment_time()
                 pend_b.increment_time()
+            elif (pend.f_int == numerical_integration.symplectic_euler) or (pend.f_int == numerical_integration.stormer_verlet):
+                thetas, p_i = pend.f_int(pend)
+                pend.set_q(thetas)
+                pend.set_p(p_i)
+                pend.set_omegas_from_p_q()
+                pend.increment_time()
             else:    
                 thetas, omegas = pend.f_int(pend)
                 pend.set_u(thetas, omegas)
@@ -280,7 +290,7 @@ def animate_pendulum_detailed(pend):
         vx, vy = pend.get_xy_velocity()
         theta, r = pend.get_polar_coords()
         ene_tot = pend.total_energy() 
-        omega = pend.get_p()
+        omega = pend.get_omegas()
 
         for k in range(n):
             x_plot[k].append(x[k])
@@ -393,16 +403,18 @@ def animate_the_butterfly_effect(pends):
     ax.add_collection(line_pends)
     points, = plt.plot([], [],'ok', lw = '1')
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+    anim_text = ax.text(0.02, 0.98, '', transform=ax.transAxes)
     
-    q_pend = np.empty((n_pend, 3))
-    x_pend = np.empty((n_pend, 3))
-    y_pend = np.empty((n_pend, 3))
+    q_pend = np.empty((n_pend, n))
+    x_pend = np.empty((n_pend, n))
+    y_pend = np.empty((n_pend, n))
 
     def init():
         line_pends.set_segments(np.zeros((n_pend, 0, 2)))
         line_track_pends.set_segments(np.zeros((n_pend, 0, 2)))
         points.set_data([], [])
         time_text.set_text('')
+        anim_text.set_text(f'{pend_def.f_int.__name__}')
 
         return line_pends, points, line_track_pends, time_text
 
@@ -461,5 +473,3 @@ def xy_to_segment(x, y, n, n_pend):
             segments[i][j+1][0] = x[i][j]
             segments[i][j+1][1] = y[i][j]
     return segments
-
-

@@ -66,15 +66,15 @@ def triple_d_p_H(q, p, t, lengths, masses, g):
 
 #### function for integrating, these calculate  F_i/m = a_i and returns [v_i, a_i] because of simplicity for multiplication in the function for integrating
 
-def f_single( q, p , t, lengths, masses, g):
+def f_single( q, dot_q , t, lengths, masses, g):
 	theta_1 = q[0]
-	w1 = p[0]      
+	w1 = dot_q[0]      
 	dw1 = -g/lengths[0] * np.sin(theta_1)
 	return np.array([ w1]), np.array([ dw1]) 
 
-def f_double( q, p , t, lengths, masses, g):
+def f_double( q, dot_q , t, lengths, masses, g):
     theta_1, theta_2 = q[0], q[1]
-    w1, w2 = p[0], p[1]
+    w1, w2 = dot_q[0], dot_q[1]
 
     theta_12 = theta_1 - theta_2
     sin_1, sin_2 = (np.sin(theta_1), np.sin(theta_2))
@@ -89,9 +89,9 @@ def f_double( q, p , t, lengths, masses, g):
 
     return np.array([ w1, w2]), np.array([dw1, dw2])
 
-def f_triple(q, p, t, lengths, masses, g):
+def f_triple(q, dot_q, t, lengths, masses, g):
 	theta_1, theta_2, theta_3 = q[0], q[1], q[2]
-	w1, w2, w3 = p[0], p[1], p[2]
+	w1, w2, w3 = dot_q[0], dot_q[1], dot_q[2]
 
 	theta_21 = theta_2 - theta_1
 	theta_31 = theta_3 - theta_1
@@ -138,9 +138,10 @@ def Hamiltonian_single_omegas(q, p,t, lengths, masses, g):
     return omegas
 def Hamiltonian_double_omegas(q, p,t, lengths, masses, g):
     omegas = np.zeros(2)
-    omegas[0] = (lengths[1]*p[0] - lengths[0]*p[1]*np.cos(q[0] - q[1]))/(lengths[0]**2*lengths[1]*(masses[1]*(np.sin(q[0] - q[1]))**2 + masses[0]))
-    omegas[1] = (lengths[0]*masses[1]*p[1]*np.cos(2*q[0] - 2*q[1]) - 2*lengths[1]*masses[1]*p[0]*np.cos(q[0] - q[1]) + lengths[0]*p[1]*(2*masses[1]*np.sin(q[0] - q[1]) + 2*masses[0] + masses[1]))/(2*lengths[0]*lengths[1]**2*masses[1]*(masses[1]*(np.sin(q[0] - q[1]))**2 + masses[0]))
+    omegas[0] = (lengths[1]**2*masses[1]*p[0])/(lengths[0]**2*lengths[1]**2*masses[0]*masses[1] +     lengths[0]**2*lengths[1]**2*masses[1]**2 - lengths[0]**2*lengths[1]**2*masses[1]**2*     np.cos(q[0] - q[1])**2) -   (lengths[0]*lengths[1]*masses[1]*p[1]*np.cos(q[0] - q[1]))/   (lengths[0]**2*lengths[1]**2*masses[0]*masses[1] + lengths[0]**2*lengths[1]**2*masses[1]**2 -     lengths[0]**2*lengths[1]**2*masses[1]**2*np.cos(q[0] - q[1])**2) 
+    omegas[1] =  (lengths[0]**2*(masses[0] + masses[1])*p[1])/(lengths[0]**2*lengths[1]**2*masses[0]*masses[1] +     lengths[0]**2*lengths[1]**2*masses[1]**2 - lengths[0]**2*lengths[1]**2*masses[1]**2*     np.cos(q[0] - q[1])**2) -   (lengths[0]*lengths[1]*masses[1]*p[0]*np.cos(q[0] - q[1]))/   (lengths[0]**2*lengths[1]**2*masses[0]*masses[1] + lengths[0]**2*lengths[1]**2*masses[1]**2 -     lengths[0]**2*lengths[1]**2*masses[1]**2*np.cos(q[0] - q[1])**2)
     return omegas
+
 def Hamiltonian_triple_omegas(q, p,t, lengths, masses, g):
     omegas = np.zeros(3)
     omegas[0] = (-(lengths[0]*lengths[2]*(2*masses[1] + masses[2])*p[1]*np.cos(q[0] - q[1])) + lengths[0]*lengths[2]*masses[2]*p[1]*np.cos(q[0] + q[1] - 2*q[2]) +    lengths[1]*(2*lengths[2]*masses[1]*p[0] + lengths[2]*masses[2]*p[0] - lengths[0]*(masses[1] + masses[2])*p[2]*np.cos(q[0] - q[2]) - lengths[2]*masses[2]*p[0]*np.cos(2*(q[1] - q[2])) +      lengths[0]*masses[1]*p[2]*np.cos(q[0] - 2*q[1] + q[2]) + lengths[0]*masses[2]*p[2]*np.cos(q[0] - 2*q[1] + q[2])))/  (lengths[0]**2*lengths[1]*lengths[2]*(2*masses[0]*masses[1] + masses[1]**2 + masses[0]*masses[2] + masses[1]*masses[2] - masses[1]*(masses[1] + masses[2])*np.cos(2*(q[0] - q[1])) -     masses[0]*masses[2]*np.cos(2*(q[1] - q[2]))))

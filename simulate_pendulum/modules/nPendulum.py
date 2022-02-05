@@ -1,6 +1,6 @@
 import numpy as np
 from Simulation import Simulation
-from utilities import angle_mod
+import utilities as ut
 import pendulum_functions as pf
 import numerical_integration as ni
 
@@ -10,7 +10,7 @@ class nPendulum(Simulation):
             self.type_pend = type_pend
             self.lengths   = lengths
             self.masses    = masses
-            self.thetas    = angle_mod(thetas)
+            self.thetas    = ut.angle_mod(thetas)
             self.omegas    = omegas
             self.p = nPendulum.set_p_from_q_omegas(self)
     def running(self, anim_name):
@@ -31,7 +31,7 @@ class nPendulum(Simulation):
     def get_u(self):
         return np.concatenate((self.thetas, self.omegas), axis = None)
     def set_u(self, thetas, omegas):
-        self.thetas = angle_mod(thetas)
+        self.thetas = ut.angle_mod(thetas)
         self.omegas = omegas
     def get_q(self):
         return self.thetas
@@ -40,20 +40,22 @@ class nPendulum(Simulation):
     def get_omegas(self):
         return self.omegas
     def set_q(self, q):
-        self.thetas = angle_mod(q)
+        self.thetas = ut.angle_mod(q)
     def set_p(self, p):
         self.p = p
     def set_p_from_q_omegas(self):
             # if Hamiltonian
         if ( (self.f_int == ni.symplectic_euler) or (self.f_int == ni.stormer_verlet)):
             dict_p = {1: pf.Hamiltonian_single_p, 2: pf.Hamiltonian_double_p, 3: pf.Hamiltonian_triple_p}
-            return dict_p[self.type_pend](self.thetas, self.omegas, self.time, self.lengths, self.masses, self.g)
-        else: return 0
+            self.p = dict_p[self.type_pend](self.thetas, self.omegas, self.time, self.lengths, self.masses, self.g)
+            return self.p
     def set_omegas_from_p_q(self):
+            # if Hamiltonian
         if ( (self.f_int == ni.symplectic_euler) or (self.f_int == ni.stormer_verlet)):
             dict_p = {1: pf.Hamiltonian_single_omegas, 2: pf.Hamiltonian_double_omegas, 3: pf.Hamiltonian_triple_omegas}
-            return dict_p[self.type_pend](self.thetas, self.p, self.time, self.lengths, self.masses, self.g)
-        else: return 0
+            self.omegas = dict_p[self.type_pend](self.thetas, self.p, self.time, self.lengths, self.masses, self.g)
+            return self.omegas
+
     def set_omegas(self, omegas):
         self.omegas = omegas 
     def set_masses(self, masses):
@@ -91,30 +93,16 @@ class nPendulum(Simulation):
             temp_y = dy[i]
         return dx, dy 
     def kinetic_energy(self):
-        if ( (self.f_int == ni.symplectic_euler) or (self.f_int == ni.stormer_verlet)):
-            dict_energy = {1: pf.Hamiltonian_single_Ek, 2: pf.Hamiltonian_double_Ek, 3: pf.Hamiltonian_triple_Ek}
-            return dict_energy[self.type_pend](self.thetas, self.p, self.time, self.lengths, self.masses, self.g)
-
         dx, dy = nPendulum.get_xy_velocity(self)
         ek = np.zeros(self.type_pend)
         for i in range(0, self.type_pend):
             ek[i] += self.masses[i] * (dx[i]**2 + dy[i]**2) / 2
         return ek
     def potential_energy(self):
-            # if Hamiltonian
-        if ( (self.f_int == ni.symplectic_euler) or (self.f_int == ni.stormer_verlet)):
-            dict_energy = {1: pf.Hamiltonian_single_U, 2: pf.Hamiltonian_double_U, 3: pf.Hamiltonian_triple_U}
-            return dict_energy[self.type_pend](self.thetas, self.p, self.time, self.lengths, self.masses, self.g)
-
         x, y = nPendulum.get_xy_coords(self)
         ep = np.zeros(self.type_pend)
         for i in range(0, self.type_pend):
             ep[i] = self.g*(self.masses[i]*y[i]) + self.g*(self.masses[i]*sum(self.lengths[0:i+1]))
         return ep
     def total_energy(self):
-
-        if ( (self.f_int == ni.symplectic_euler) or (self.f_int == ni.stormer_verlet)):
-            dict_energy = {1: pf.Hamiltonian_single_Etot, 2: pf.Hamiltonian_double_Etot, 3: pf.Hamiltonian_triple_Etot}
-            return dict_energy[self.type_pend](self.thetas, self.p, self.time, self.lengths, self.masses, self.g)
-
         return nPendulum.kinetic_energy(self) + nPendulum.potential_energy(self) 

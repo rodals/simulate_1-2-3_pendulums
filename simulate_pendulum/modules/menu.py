@@ -11,13 +11,17 @@ import numerical_integration  as ni
 
 def complete_menu():
     # default initial conditions
-    # initial angle in grad 
-    lengths  = np.array([1., 1., 1.])
-    masses   = np.array([1., 1., 1.])
-    grads0 = np.array([135, 135, 135])
-    thetas0 = grads0 * 2 * np.pi /360
-    omegas0_grad = np.zeros(3)
-    omegas0  = omegas0_grad * 2 * np.pi / 360
+    lengths_def  = np.array([1., 1., 1.])
+    masses_def   = np.array([1., 1., 1.])
+    grads0_def = np.array([135, 135, 135])
+    thetas0_def = grads0_def * 2 * np.pi /360
+    omegas0_grad_def = np.zeros(3)
+    omegas0_def  = omegas0_grad_def * 2 * np.pi / 360
+
+    lengths  = np.array([])
+    masses   = np.array([])
+    thetas0 = np.array([])
+    omegas0  = np.array([])
 
     g = 9.81
     h_step = 0.001
@@ -60,9 +64,10 @@ Method of Numerical integration? - N for working pendulum \n
 Running with Default configuration? [[y]/n] \n   
     N pendulum = {type_pend} \n   
     time step = {h_step}s \n   
-    theta_0 = {grads0}grad \n
-    lengths = {lengths}m \n
-    masses = {masses}Kg \n
+    theta_0 = {grads0_def}grad \n
+    omega_0 = {omegas0_grad_def}grad \n
+    lengths = {lengths_def}m \n
+    masses = {masses_def}Kg \n
     fps = {frameforsec}s**-1 \n
     time simulation = {time_simulation}s \n
     g = {g}m/s**2 \n
@@ -76,10 +81,10 @@ Running with Default configuration? [[y]/n] \n
 
         for i in range(type_pend):
             print(f"\nPend n. {i+1} :")
-            lengths[i] = ut.right_input(f" Length [{lengths[i]}] m:   ", float, lengths[i])
-            masses[i]  = ut.right_input(f" Mass [{masses[i]}] Kg:   ", float, masses[i])
-            thetas0[i] = ut.right_input(f" Initial theta [{grads0[i]}] Grad:    ", float, grads0[i])*2*np.pi/360
-            omegas0[i] = ut.right_input(f" Initial omega [{omegas0_grad[i]}] Grad/s:   ", float, omegas0_grad[i])*2*np.pi/360
+            lengths = np.append(lengths, ut.right_input(f" Length [{lengths_def[i]}] m:   ", float, lengths_def[i]))
+            masses = np.append(masses, ut.right_input(f" Mass [{masses_def[i]}] Kg:   ", float, masses_def[i]))
+            thetas0 = np.append(thetas0, ut.right_input(f" Initial theta [{grads0_def[i]}] Grad:    ", float, grads0_def[i])*2*np.pi/360)
+            omegas0 = np.append(omegas0, ut.right_input(f" Initial omega [{omegas0_grad_def[i]}] Grad/s:   ", float, omegas0_grad_def[i])*2*np.pi/360)
 
 
         g = ut.right_input(f"Gravity [{g}] m/s**2 :   ", float, g)
@@ -90,6 +95,11 @@ Running with Default configuration? [[y]/n] \n
     elif y_n != "y" and y_n:
             print("Wrong input.")
             exit()
+    else: 
+        thetas0 = thetas0_def
+        omegas0 = omegas0_def
+        masses = masses_def
+        lengths = lengths_def
 
     mode = ut.right_input('''
 Select Mode: \n
@@ -113,7 +123,7 @@ Select Mode: \n
         fileoutput = ut.right_input("Name output gif [enter to default]:   ", str, fileoutput)
 
         print(fileoutput)
-        set_n_mode = { 1: nPendulum.set_q, 2: nPendulum.set_p, 3: nPendulum.set_masses, 4: nPendulum.set_lengths, 5: nPendulum.set_g}
+        set_n_mode = { 1: nPendulum.set_q, 2: nPendulum.set_omegas, 3: nPendulum.set_masses, 4: nPendulum.set_lengths, 5: nPendulum.set_g}
         var_n_mode = { 1: thetas0, 2: omegas0, 3: masses, 4: lengths, 5: g}
         pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0) for i in range(n_pends)]
         for i in range(n_pends):
@@ -133,8 +143,8 @@ Select Mode: \n
     print(f"Output file: {fileoutput}")
 
 def input_menu(input_file):
-    # default initial conditions
-    # initial angle in grad 
+# default initial conditions
+# initial angle in grad 
     i = 0
     with open(input_file, "r") as fh:
         for line in fh:
@@ -168,7 +178,7 @@ def input_menu(input_file):
                 elif i == 13:
                     perturb = float(line)
                 elif i == 14:
-                    n_pend = int(line)
+                    n_pends = int(line)
                 i+=1
 
     d_f_int = {1:ni.forward_euler, 2:ni.backward_euler, 3:ni.semi_implicit_euler, 4: ni.symplectic_euler, 5:ni.stormer_verlet,  6: ni.velocity_verlet, 7: ni.two_step_adams_bashforth, 8: ni.crank_nicolson, 9: ni.runge_kutta4,}
@@ -177,35 +187,25 @@ def input_menu(input_file):
     omegas0  = omegas0_grad * 2 * np.pi / 360
 
     ## for the butterfly effect
-    perturb = 1e-4
-    n_pends = 40
-
+    perturb_m = np.zeros(5)
+    perturb_m[n_mode-1] = perturb
     # dictionary to simplify life for input n other things
     n_pend_string = {1: "single", 2: "double", 3: "triple"}
     dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
     dict_animation = { 1: anime.animate_pendulum_simple,2: anime.animate_pendulum_detailed, 3: anime.animate_the_butterfly_effect}
 
     if mode == 1 or  mode == 2: 
-#        fileoutput = f"./video/{dict_animation[mode].__name__}_{n_pend_string[type_pend]}_{f_int.__name__}.mp4"
-#        fileoutput = ut.right_input("Name output gif [enter to default]:   ", str, fileoutput)
         pend = nPendulum(h_step, 0., time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0)
         pend.running(dict_animation[mode].__name__)
-
     elif mode == 3: 
-#        fileoutput = f"./video/{dict_animation[mode].__name__}_{n_pend_string[type_pend]}-perturb_{dict_mode[n_mode]}-{perturb}-{f_int.__name__}.mp4"
-#        fileoutput = ut.right_input("Name output gif [enter to default]:   ", str, fileoutput)
-        set_n_mode = { 1: nPendulum.set_q, 2: nPendulum.set_p, 3: nPendulum.set_masses, 4: nPendulum.set_lengths, 5: nPendulum.set_g}
+        set_n_mode = { 1: nPendulum.set_q, 2: nPendulum.set_omegas, 3: nPendulum.set_masses, 4: nPendulum.set_lengths, 5: nPendulum.set_g}
+        perturb_masses =  np.zeros(type_pend)
+        perturb_masses[0] += perturb_m[2]
         var_n_mode = { 1: thetas0, 2: omegas0, 3: masses, 4: lengths, 5: g}
-        pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0) for i in range(n_pends)]
-        for i in range(n_pends):
-            if (not n_mode == 3):
-                set_n_mode[n_mode](pend[i], var_n_mode[n_mode] + perturb * i)
-            else: 
-                set_n_mode[n_mode](pend[i], np.array([masses[0] + perturb*i, masses[1], masses[2]]))
+        pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g + perturb_m[4]*i, fileoutput, type_pend, lengths + perturb_m[3]*np.ones(type_pend), masses + perturb_masses*i, thetas0 + i * perturb_m[0]*np.ones(type_pend), omegas0 + i * perturb_m[1]*np.ones(type_pend)) for i in range(n_pends)]
         pend[0].running(dict_animation[mode].__name__)
-
     else: ut.bye()
-    os.makedirs('./video', exist_ok = True)
+
     t_start = perf_counter()
     dict_animation[mode](pend)
     t_end = perf_counter()

@@ -1,0 +1,31 @@
+# numerical integration
+8
+# type_pendulum
+2
+# lengths
+1 1
+# masses
+1 1
+# angles
+150 150
+# angular velocities
+0 0
+# gravity
+9.81
+# time step
+0.001
+# time_simulation
+1000
+# fps
+30
+# Mode 
+1
+# Name output (with extension)
+./input/long_time/simple/double/video/simple-double-crank_nicolson.mp4
+# lines only IF the butterfly effect
+# perturbation mode: 1 -> angles; 2 -> velocities; 3 -> first mass; 4 -> lengths; 5 -> gravity; 0 -> nothing
+1
+# perturbation module
+1e-6
+# number of pendulums
+40
