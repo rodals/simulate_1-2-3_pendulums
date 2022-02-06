@@ -208,7 +208,9 @@ def input_menu(input_file):
     else: ut.bye()
 
     t_start = perf_counter()
-    dict_animation[mode](pend)
+    if mode == 3:
+        dict_animation[mode](pend, perturb, dict_mode[n_mode])
+    else: dict_animation[mode](pend)
     t_end = perf_counter()
 
     print(f"Time execution: {t_end - t_start: .4}")

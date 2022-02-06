@@ -7,9 +7,9 @@
 # masses
 1
 # angles
-20
+150
 # angular velocities
-5
+0
 # gravity
 9.81
 # time step
@@ -21,7 +21,7 @@
 # Mode 
 1
 # Name output (with extension)
-./input/testing/simple/single/video/simple-single-two_step_adams-bashforth.mp4
+./input/long_time/simple/single/video/simple-single-two_step_adams-bashforth.mp4
 # lines only IF the butterfly effect
 # perturbation mode: 1 -> angles; 2 -> velocities; 3 -> first mass; 4 -> lengths; 5 -> gravity; 0 -> nothing
 1

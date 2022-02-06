@@ -17,7 +17,7 @@
 # time_simulation
 1000
 # fps
-30
+5
 # Mode 
 2
 # Name output (with extension)

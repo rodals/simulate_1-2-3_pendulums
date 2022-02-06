@@ -15,13 +15,13 @@
 # time step
 0.001
 # time_simulation
-10
+100
 # fps
-30
+10
 # Mode 
 3
 # Name output (with extension)
-./input/testing/butterfly/angles/triple/video/butterfly-triple-symplectic_euler.mp4
+./input/long_time/butterfly/angles/triple/video/butterfly-triple-symplectic_euler.mp4
 # lines only IF the butterfly effect
 # perturbation mode: 1 -> angles; 2 -> velocities; 3 -> first mass; 4 -> lengths; 5 -> gravity; 0 -> nothing
 1

@@ -20,6 +20,13 @@ class nPendulum(Simulation):
     def __str__(self):
         n_pend_string = {1: "single", 2: "double", 3: "triple"}
         return n_pend_string[self.type_pend]
+    def full_txt(self):
+        txt = f"{self} pend\n angles: {self.thetas_grad()}grad, ang. vel.: {self.omegas_grad()}grad/s, \nlengths: {self.lengths}m, masses: {self.masses}Kg\n h_step: {self.h_step}s, fps: {self.frameforsec}, g: {self.g}m/s**2"
+        return txt
+    def thetas_grad(self):
+        return self.thetas * 360 / (2 * np.pi)
+    def omegas_grad(self):
+        return self.omegas * 360 / (2 * np.pi)
     def f_accel(self):
         f_n = { 1: pf.f_single, 2: pf.f_double, 3: pf.f_triple}
         return f_n[self.type_pend]

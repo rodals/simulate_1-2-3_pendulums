@@ -11,6 +11,7 @@ import numerical_integration
 
 def animate_pendulum_simple(pend):
     fig = plt.figure(figsize = (16, 9))
+    fig.suptitle(f'{pend.full_txt()}', fontsize=10)
     position = { 'motion':0}
     n = pend.type_pend
     pend_b = copy.deepcopy(pend)
@@ -130,6 +131,7 @@ def animate_pendulum_simple(pend):
 def animate_pendulum_detailed(pend):
     t = 0
     fig = plt.figure(figsize = (12, 12) )
+    fig.suptitle(f'{pend.full_txt()}', fontsize=10)
     position = {
             'motion':0, 'position_y':      1,    'complete_motion':2,
         'position_x':3,  'polar':          4, 'energy_tot':5,
@@ -223,7 +225,7 @@ def animate_pendulum_detailed(pend):
     axes_v[position['position_x']].set_ylim(0, pend.time_max)
 
     axes_v[position['position_y']].sharey(axes_v[position['motion']])
-    axes_v[position['position_y']].set_title(r"$t (s)$ vs $y (m)$")
+#    axes_v[position['position_y']].set_title(r"$t (s)$ vs $y (m)$")
     axes_v[position['position_y']].set_xlabel(r"$t (s)$")
     axes_v[position['position_y']].set_ylabel(r"$y (m)$")
     axes_v[position['position_y']].xaxis.tick_top()
@@ -391,7 +393,7 @@ def animate_pendulum_detailed(pend):
 #    plt.show()
     return anim
 
-def animate_the_butterfly_effect(pends):
+def animate_the_butterfly_effect(pends, perturb, perturb_mode):
     n_pend = len(pends)
     pend_def = pends[0]
     pends_b = copy.deepcopy(pends)
@@ -404,6 +406,7 @@ def animate_the_butterfly_effect(pends):
 
     # for graphing
     fig, ax = plt.subplots(figsize=(8, 8))
+    fig.suptitle(f'{pend_def.full_txt()}\n {n_pend} perturbation: {perturb} of {perturb_mode}', fontsize=10)
     ax.axis('off')
     l_max = np.sum((pends[n_pend-1].lengths[0:n:1]))*1.2 
     ax.set(xlim=(-l_max, l_max), ylim=(-l_max, l_max))
@@ -419,6 +422,7 @@ def animate_the_butterfly_effect(pends):
 
     anim_text = ax.text(0.02, 0.98, '', transform=ax.transAxes)
     time_text = ax.text(0.02, 0.94, '', transform=ax.transAxes)
+    perturb_text = ax.text(0.02, 0.94, '', transform=ax.transAxes)
     
     q_pend = np.empty((n_pend, n))
     x_pend = np.empty((n_pend, n))
