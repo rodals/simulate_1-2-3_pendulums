@@ -21,6 +21,7 @@ def animate_pendulum_simple(pend):
     en_tot = []
     en_p = []
 
+    
     x_plot = [ [], [], [] ]
     y_plot = [ [], [], [] ]
     r_plot = [ [], [], [] ]
@@ -34,33 +35,43 @@ def animate_pendulum_simple(pend):
     marker_face = {0: 'xkcd:bright green', 1: 'xkcd:salmon', 2: 'xkcd:azure'}
     ax_pend_lines = [[], [], [], [], []]
 
+   # different for so it is better from a visual point of view
+
+    # first add the tail so it visualize behind
+#    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o',color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1],linestyle='', markevery=[-1], markeredgecolor = 'k', animated = True)[0])
+
+    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1],linewidth=1, markevery=1, markeredgecolor = 'k', animated = True)[0])
+
+# then add the lines from a mass to another
     for p in range(n):
-# lines from a mass to another
         ax_pend_lines[0].append(axes_v[position["motion"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
-    # different for so it is better from a visual point of view
-    for p in range(n-1):
+# then add the points
+    for p in range(n):
 # tail and points
-        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=[-1], markeredgecolor = 'k', animated = True)[0])
+        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])
 
-    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1],lw=1, markevery=1, markeredgecolor = 'k', animated = True)[0])
-    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o',color = color_tails[n-1],markersize = 12, markerfacecolor = marker_face[n-1],linestyle='', markevery=[-1], markeredgecolor = 'k', animated = True)[0])
 
-    time_text = axes_v[position['motion']].text(0.02, 0.95, '', transform=axes_v[position['motion']].transAxes)
-    energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+ 
     anim_text = axes_v[position['motion']].text(0.02, 0.98, '', transform=axes_v[position['motion']].transAxes)
+    time_text = axes_v[position['motion']].text(0.02, 0.94, '', transform=axes_v[position['motion']].transAxes)
+    energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+    energy_diff_text = axes_v[position['motion']].text(0.02, 0.86, '', transform=axes_v[position['motion']].transAxes)
 
      
     def init():
-        for p in range(n):
+        for p in range(len(ax_pend_lines[0])):
             ax_pend_lines[0][p].set_data([], [])
+        for p in range(len(ax_pend_lines[1])):
+            ax_pend_lines[1][p].set_data([], [])
         time_text.set_text('')
         energy_text.set_text('')
+        energy_diff_text.set_text('')
         anim_text.set_text(f'{pend.f_int.__name__}')
-        return ax_pend_lines[0]+[time_text, energy_text, anim_text] 
+        return ax_pend_lines[0]+ax_pend_lines[1] + [time_text, energy_text, anim_text] 
          
 
     def animate(i):
-        tail = 100000
+        tail = 1000
         for x in range(pend.fps_jump()):
             if (pend.f_int == numerical_integration.two_step_adams_bashforth):
                 ((thetas, omegas), (thetas_b, omegas_b))  = pend.f_int(pend, pend_b)
@@ -92,16 +103,17 @@ def animate_pendulum_simple(pend):
 
         # line from the origin to the first mass
         ax_pend_lines[0][0].set_data([0, x[0]], [0, y[0]])
+        ax_pend_lines[1][0].set_data(x_plot[n-1][max(0, i-tail):i+1], y_plot[n-1][max(0,i-tail):i+1])
         for j in range(1, n):
         # line from the i-1 mass to the i mass
             ax_pend_lines[0][j].set_data([x[j-1], x[j]], [y[j-1], y[j]])
-            ax_pend_lines[1][j-1].set_data(x_plot[j-1][i], y_plot[j-1][i])
+            ax_pend_lines[1][j].set_data(x_plot[j-1][i], y_plot[j-1][i])
 
-        ax_pend_lines[1][n-1].set_data(x_plot[n-1][max(0, i-tail):i+1], y_plot[n-1][max(0,i-tail):i+1])
         ax_pend_lines[1][n].set_data(x_plot[n-1][i], y_plot[n-1][i])
     
         time_text.set_text('Time = %.1f' % (pend.time))
         energy_text.set_text('Total Energy = %.9f J' % en_tot[i])
+        energy_diff_text.set_text(f'Error Energy = {((en_tot[i]-en_tot[0])/en_tot[0])*100: .5} %')
         pend.percentage()
         return (ax_pend_lines[0]+ ax_pend_lines[1]+ ax_pend_lines[2] + ax_pend_lines[3] + ax_pend_lines[4])
 
@@ -245,9 +257,10 @@ def animate_pendulum_detailed(pend):
     axes_v[position['energy_k_p']].yaxis.set_label_position("right")
     axes_v[position['energy_k_p']].legend()
 
-    time_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
-    energy_text = axes_v[position['motion']].text(0.02, 0.85, '', transform=axes_v[position['motion']].transAxes)
-    anim_text = axes_v[position['motion']].text(0.02, 0.98, '', transform=axes_v[position['motion']].transAxes)
+    energy_text = axes_v[position['motion']].text(0.02, 0.98, '', transform=axes_v[position['motion']].transAxes)
+    energy_diff_text = axes_v[position['motion']].text(0.02, 0.92, '', transform=axes_v[position['motion']].transAxes)
+    time_text = axes_v[position['motion']].text(0.02, 0.86, '', transform=axes_v[position['motion']].transAxes)
+    anim_text = axes_v[position['motion']].text(0.02, 0.80, '', transform=axes_v[position['motion']].transAxes)
 
     def init():
         for p in range(n):
@@ -367,6 +380,7 @@ def animate_pendulum_detailed(pend):
     
         time_text.set_text('Time = %.1f' % (pend.time))
         energy_text.set_text('Total Energy = %.7f J' % en_tot[i])
+        energy_diff_text.set_text(f'Error Energy = {((en_tot[i]-en_tot[0])/en_tot[0])*100: .5} %')
         pend.percentage()
         return (ax_pend_lines[0]+ ax_pend_lines[1] + pos_x + pos_y + phase + energy + [time_text, energy_text])
 
@@ -402,8 +416,9 @@ def animate_the_butterfly_effect(pends):
     ax.add_collection(line_track_pends)
     ax.add_collection(line_pends)
     points, = plt.plot([], [],'ok', lw = '1')
-    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+
     anim_text = ax.text(0.02, 0.98, '', transform=ax.transAxes)
+    time_text = ax.text(0.02, 0.94, '', transform=ax.transAxes)
     
     q_pend = np.empty((n_pend, n))
     x_pend = np.empty((n_pend, n))
@@ -444,6 +459,7 @@ def animate_the_butterfly_effect(pends):
         line_pends.set_segments(p_segments)
         line_track_pends.set_segments(track_segments_plot[:, 0:i+1])
         time_text.set_text('Time = %.1f' % (pend_def.time))
+
         x_point, y_point = lines.reshape(-1, 2).T
         points.set_data(x_point, y_point)
         pend_def.percentage()

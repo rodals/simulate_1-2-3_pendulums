@@ -19,13 +19,18 @@ def right_input(write, type_wanted, default_value):
 
 def angle_mod(thetas):
     i = 0
+    count_max = 500
     for theta in thetas:
         theta = thetas[i]
+        j = 0
         while (theta < 0):
             theta+=(2*np.pi)
             theta = theta % (2*np.pi)
-        while( theta > np.pi):
+        while( theta > np.pi and j < count_max):
             theta-=(2*np.pi)
+            j+=1
+        if (j == 500):
+            exit("Overflow angle. Retry changing parameters")
         thetas[i] = theta
         i+=1
     return thetas

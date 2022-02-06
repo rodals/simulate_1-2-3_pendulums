@@ -28,6 +28,8 @@ def backward_euler(pend):
     lengths = pend.lengths
     g = pend.g
     s = 1e-12
+    count_max = 1000
+    count = 0
     c_q, c_dot_q = np.zeros(pend.type_pend), np.zeros(pend.type_pend)
     diff_q, diff_dot_q = np.ones(pend.type_pend)*2*s, np.ones(pend.type_pend)*2*s
     while ((np.abs(diff_q)>s).any() and (np.abs(diff_dot_q)>s).any()):
@@ -37,6 +39,8 @@ def backward_euler(pend):
         c_dot_q *= h
         diff_q -= c_q
         diff_dot_q -= c_dot_q
+        count +=1
+        if(count > count_max): exit("Implicit method taking too many runs to converge, change parameters")
     q += c_q
     dot_q += c_dot_q
     return q, dot_q
@@ -140,6 +144,8 @@ def crank_nicolson(pend):
     lengths = pend.lengths
     g = pend.g
     s = 1e-12
+    count = 0
+    count_max = 1000
     c_q, c_dot_q = np.zeros(pend.type_pend), np.zeros(pend.type_pend)
     diff_q, diff_dot_q = np.ones(pend.type_pend)*2*s, np.ones(pend.type_pend)*2*s
     q_0, dot_q_0 = f(q, dot_q, t, lengths, masses, g)
@@ -152,6 +158,8 @@ def crank_nicolson(pend):
         c_dot_q *= h/2
         diff_q -= c_q
         diff_dot_q -= c_dot_q
+        count += 1
+        if(count > count_max): exit("Implicit method taking too many runs to converge, change parameters")
     q += c_q
     dot_q += c_dot_q
     return q, dot_q
@@ -180,12 +188,13 @@ def implicit(f, q, p, t, lengths, masses, g, h_inc,  s, p_or_q):
     diff = np.ones(len(lengths))*2*s
     d = np.zeros(len(lengths))
     count = 0
-    count_max = 500
-    while( (np.abs(diff) > s).any() and count < count_max):
+    count_max = 1000
+    while( (np.abs(diff) > s).any()):
         if(p_or_q =="q"): d1 = f(q+d, p, t, lengths, masses, g)*h_inc
         elif(p_or_q =="p"):  d1 = f(q, p-d, t, lengths, masses, g)*h_inc
         diff = d1 -  d
         d = copy.deepcopy(d1)
         count+=1
+        if(count > count_max): exit("Implicit method taking too many runs to converge, change parameters")
     return d
 
