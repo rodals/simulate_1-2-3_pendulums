@@ -202,8 +202,9 @@ def input_menu(input_file):
         perturb_masses =  np.zeros(type_pend)
         perturb_masses[0] += perturb_m[2]
         var_n_mode = { 1: thetas0, 2: omegas0, 3: masses, 4: lengths, 5: g}
-        pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g + perturb_m[4]*i, fileoutput, type_pend, lengths + perturb_m[3]*np.ones(type_pend), masses + perturb_masses*i, thetas0 + i * perturb_m[0]*np.ones(type_pend), omegas0 + i * perturb_m[1]*np.ones(type_pend)) for i in range(n_pends)]
+        pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g + perturb_m[4]*i, fileoutput, type_pend, lengths + perturb_m[3]*np.ones(type_pend)*i, masses + perturb_masses*i, thetas0 + perturb_m[0]*np.ones(type_pend)*i, omegas0 + perturb_m[1]*np.ones(type_pend)*i) for i in range(n_pends)]
         pend[0].running(dict_animation[mode].__name__)
+
     else: ut.bye()
 
     t_start = perf_counter()

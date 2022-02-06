@@ -334,7 +334,7 @@ def animate_pendulum_detailed(pend):
             axes_v[position['polar']].yaxis.tick_right()
         elif (n == 1):
             axes_v[position['polar']].set_theta_zero_location("S")
-            axes_v[position['polar']].set_rmax(lengths[0])
+            axes_v[position['polar']].set_rmax(pend.lengths*1.1)
             axes_v[position['polar']].plot(theta_plot[0][::-1], r_plot[0][::-1], 'o-',color = 'xkcd:bright blue',markersize = 2, markerfacecolor = 'azure',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)
             axes_v[position['polar']].plot(theta_plot[0][i], r_plot[0][i], 'o',color = 'xkcd:bright blue',markersize = 8, markerfacecolor = 'azure',ls='', markevery=1, markeredgecolor = 'k', animated = True)
 

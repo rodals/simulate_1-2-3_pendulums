@@ -26,6 +26,6 @@
 # perturbation mode: 1 -> angles; 2 -> velocities; 3 -> first mass; 4 -> lengths; 5 -> gravity; 0 -> nothing
 1
 # perturbation module
-1e-6
+1e-4
 # number of pendulums
 40
