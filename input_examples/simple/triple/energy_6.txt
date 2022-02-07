@@ -1,0 +1,24 @@
+# numerical integration
+6
+# type_pendulum
+3
+# lengths
+1 1 1
+# masses
+1 1 1
+# angles
+130 130 130
+# angular velocities
+0 0 0
+# gravity
+9.81
+# time step
+0.001
+# time_simulation
+100
+# fps
+30
+# Mode 
+1
+# Name output (with extension)
+../input_examples/simple/triple/video/simple-velocity_verlet.mp4

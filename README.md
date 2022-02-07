@@ -1,4 +1,4 @@
-**Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.**   
+## **Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.**   
 There are 3 modality to run:   
 1. Simple, with just the pendulum and nothing more. Fast to run.   
 2. Simple + Energy, visualizing the simulation and the variation of total energy over time.     
@@ -29,7 +29,8 @@ Single Pendulum:
 Detailed example RK4: ![animate_pendulum_detailed_runge_kutta4_single](https://user-images.githubusercontent.com/28791454/151354608-5c673e02-3491-49a0-a6ce-2d56709c8625.gif) 
 
 
-*How to run*
+#### How to run
+
 First install the requisites from requirements.txt: 
 ```
 $ pip -r requirements.txt 

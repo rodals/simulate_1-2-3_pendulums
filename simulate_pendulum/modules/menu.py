@@ -147,6 +147,8 @@ def input_menu(input_file):
 # default initial conditions
 # initial angle in deg 
     i = 0
+    perturb = 1e-6
+    n_mode = 1
     with open(input_file, "r") as fh:
         for line in fh:
             if (not line.startswith("#")):
