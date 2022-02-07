@@ -21,4 +21,4 @@
 # Mode 
 1
 # Name output (with extension)
-../input_examples/simple/triple/video/simple.mp4
+../input_examples/simple/triple/video/simple_eulero_backward.mp4

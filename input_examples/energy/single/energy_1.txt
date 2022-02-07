@@ -21,4 +21,4 @@
 # Mode 
 2
 # Name output (with extension)
-../input_examples/energy/single/video/energy_forward_euler.txt
+../input_examples/energy/single/video/energy_forward_euler.mp4

@@ -1,0 +1,31 @@
+# numerical integration
+9
+# type_pendulum
+2
+# lengths
+1 1
+# masses
+1 1
+# angles
+150 150
+# angular velocities
+0 0
+# gravity
+9.81
+# time step
+0.001
+# time_simulation
+40
+# fps
+30
+# Mode 
+4
+# Name output (with extension)
+../input_examples/butterfly/masses/double/video/butterfly-150_150-runge_kutta.mp4
+# lines only IF the butterfly effect
+# perturbation mode: 1 -> angles; 2 -> velocities; 3 -> first mass; 4 -> lengths; 5 -> gravity; 0 -> nothing
+3
+# perturbation module
+1e-6
+# number of pendulums
+100
