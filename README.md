@@ -47,3 +47,26 @@ Then the program can be executed in two ways:
     ```
     $ python3 simulate_pendulum.py input_files.txt
     ```
+### Method of integration
+The Hamiltonian of the simple pendulum is separable (which means that V(q) and T(p)) so it was possible to use explicit symplectic propagation method which conserves the energy without using Tao's splitting methods for general nonseparable Hamiltonians.
+So for the simple pendulum the method Velocity Verlet and Semi Implicit euler have been implemented (but all the methods which have been used for the double and triple pendulums can be used for the simple).
+Meanwhile the hamiltonian of the double and triple pendulum is not separable so two different approaches have been taken.
+1. Using the Euler-Lagrange equations, inverting the system of differential equation and then using explicit non symplectic integration methods.  
+2. Using the Hamiltonian of the system, then getting derivatives with respect to q_i and p_i and using implicit symplectic integration methods (Symplectic Euler and Stormer Verlet).
+
+So for the double and triple pendulum the following methods of integrations are avaiable:
+1. Forward Euler    (explicit, order 1)
+2. Backward Euler   (implicit, order 1)
+4. Symplectic Euler (symplectic, implicit, order 1)
+5. Stormer Verlet   (symplectic, implicit, order 2)
+7. Two-step Adams–Bashforth (explicit, order 2)
+8. Crank Nicolson   (implicit, order 2)
+9. Runge kutta 4    (explicit, order 5)
+
+For the simple, the previous methods plus:
+3. Semi-implicit euler (symplectic, explicit, order 1)
+4. Velocity Verlet     (symplectic, explicit, order 2)
+
+
+For reference for the Stormer Verlet and Symplectic Euler:
+https://www.unige.ch/~hairer/poly_geoint/week2.pdf
