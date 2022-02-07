@@ -122,6 +122,7 @@ def animate_pendulum_simple(pend):
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend.frameforsec, pend.h_step*1000), frames = pend.get_fps(), repeat = False, blit = True)
     anim.save(pend.output)
     print(" Done             ")
+    plt.close('all')
     return anim
 
 def animate_pendulum_energy(pend):
@@ -250,14 +251,8 @@ def animate_pendulum_energy(pend):
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend.frameforsec, pend.h_step*1000), frames = pend.get_fps(), repeat = False, blit = True)
     anim.save(pend.output)
     print(" Done             ")
+    plt.close('all')
     return anim
-
-
-
-
-
-   
-
 
 def animate_pendulum_detailed(pend):
     t = 0
@@ -356,7 +351,6 @@ def animate_pendulum_detailed(pend):
     axes_v[position['position_x']].set_ylim(0, pend.time_max)
 
     axes_v[position['position_y']].sharey(axes_v[position['motion']])
-#    axes_v[position['position_y']].set_title(r"$t (s)$ vs $y (m)$")
     axes_v[position['position_y']].set_xlabel(r"$t (s)$")
     axes_v[position['position_y']].set_ylabel(r"$y (m)$")
     axes_v[position['position_y']].xaxis.tick_top()
@@ -521,7 +515,7 @@ def animate_pendulum_detailed(pend):
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend.frameforsec, pend.h_step*1000), frames = pend.get_fps(), repeat = False, blit = True)
     anim.save(pend.output)
     print(" Done             ")
-#    plt.show()
+    plt.close('all')
     return anim
 
 def animate_the_butterfly_effect(pends, perturb, perturb_mode):
@@ -603,6 +597,7 @@ def animate_the_butterfly_effect(pends, perturb, perturb_mode):
     anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend_def.frameforsec, pend_def.h_step*1000), frames = pend_def.get_fps(), repeat = False, blit = True)
     anim.save(pend_def.output)
     print(" Done             ")
+    plt.close('all')
     return anim
 
 def xy_to_line(x, y, n, n_pend):
