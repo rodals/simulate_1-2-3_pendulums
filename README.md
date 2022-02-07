@@ -1,16 +1,19 @@
 **Program to simulate a Triple or Double or Single pendulum with various method of numerical integration.**   
 There are 3 modality to run:   
 1. Simple, with just the pendulum and nothing more. Fast to run.   
-2. Detailed, with the pendulum and other graphics. Slow to run.   
-3. The Butterfly Effect, to visualize the chaos of the double and triple pendulum if the pendulum are given slight perturbation to the initial conditions.   
-Atm the conditions that can be perturbed are initial angles, initial angular velocities, lengths, masses (only the first mass).
+2. Simple + Energy, visualizing the simulation and the variation of total energy over time.     
+3. Detailed, with the pendulum and other graphics. Slow to run.   
+4. The Butterfly Effect, to visualize the chaos of the double and triple pendulum if the pendulum are given slight perturbation to the initial conditions.   
+Atm the conditions that can be perturbed are initial angles, initial angular velocities, lengths, masses (only the first mass) and gravity .
 
+Some visual examples:
 Triple Pendulum:
 Simple example RK4: ![animate_pendulum_simple_runge_kutta4_triple](https://user-images.githubusercontent.com/28791454/151343981-362260c2-08f7-4fc1-b5ce-454d76fcdae0.gif)
 Detailed example RK4: ![animate_pendulum_detailed_runge_kutta4_triple](https://user-images.githubusercontent.com/28791454/151346162-3db437d2-b2b8-436e-9eda-5fb31c2b49a0.gif)
-The Butterfly Effect example (perturbation of 1e-6 rad of angle) RK4: ![the_butterfly_effect-perturb_angles-1e-6-runge_kutta4_triple](https://user-images.githubusercontent.com/28791454/151345660-2e970dfc-baf7-490e-a4e0-a464400e9a20.gif)
+The Butterfly Effect example (perturbation of 1e-6 deg of angle) RK4: ![the_butterfly_effect-perturb_angles-1e-6-runge_kutta4_triple](https://user-images.githubusercontent.com/28791454/151345660-2e970dfc-baf7-490e-a4e0-a464400e9a20.gif)
 TBE example (perturbation of 1e-2m of length) RK4:  
-![tbe_lenght_40](https://user-images.githubusercontent.com/28791454/151368860-0bd1cf36-5c7e-4a28-8dc6-185bcc17cda3.gif)
+![tbe_length_40](https://user-images.githubusercontent.com/28791454/151368860-0bd1cf36-5c7e-4a28-8dc6-185bcc17cda3.gif)
+
 
 Double Pendulum:
 
@@ -18,9 +21,28 @@ Simple example RK4: ![animate_pendulum_simple_runge_kutta4_double](https://user-
 
 Detailed example RK4: ![animate_pendulum_detailed_runge_kutta4_double](https://user-images.githubusercontent.com/28791454/151353775-e38c26ec-9ee2-47c2-a050-f01057cd547d.gif)
 
-The Butterfly Effect example (perturbation of 1e-6 rad of angle) RK4: ![the_butterfly_effect-perturb_angles-1e-6-runge_kutta4_double](https://user-images.githubusercontent.com/28791454/151354141-292f7a5e-0ef1-4693-a74f-46cfe2af706a.gif)
+The Butterfly Effect example (perturbation of 1e-6 deg of angle) RK4: ![the_butterfly_effect-perturb_angles-1e-6-runge_kutta4_double](https://user-images.githubusercontent.com/28791454/151354141-292f7a5e-0ef1-4693-a74f-46cfe2af706a.gif)
 
 
 
 Single Pendulum:
 Detailed example RK4: ![animate_pendulum_detailed_runge_kutta4_single](https://user-images.githubusercontent.com/28791454/151354608-5c673e02-3491-49a0-a6ce-2d56709c8625.gif) 
+
+
+*How to run*
+First install the requisites from requirements.txt: 
+```
+$ pip -r requirements.txt 
+```
+Then the program can be executed in two ways:   
+1. Execute in the directory simulate_pendulum the file simulate_pendulum.py:
+    ```
+    $ python3 simulate_pendulum.py
+    ```
+    Then the menu will be displayed on the terminal, press enter to use default (things in [*]).   
+    For the output two different types of files are supported: .mp4 and .gif .   
+
+2. Execute giving in input file(s) txt, there are some examples in the input_examples folder.
+    ```
+    $ python3 simulate_pendulum.py input_files.txt
+    ```

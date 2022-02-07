@@ -13,10 +13,10 @@ def complete_menu():
     # default initial conditions
     lengths_def  = np.array([1., 1., 1.])
     masses_def   = np.array([1., 1., 1.])
-    grads0_def = np.array([135, 135, 135])
-    thetas0_def = grads0_def * 2 * np.pi /360
-    omegas0_grad_def = np.zeros(3)
-    omegas0_def  = omegas0_grad_def * 2 * np.pi / 360
+    degs0_def = np.array([135, 135, 135])
+    thetas0_def = degs0_def * 2 * np.pi /360
+    omegas0_deg_def = np.zeros(3)
+    omegas0_def  = omegas0_deg_def * 2 * np.pi / 360
 
     lengths  = np.array([])
     masses   = np.array([])
@@ -64,8 +64,8 @@ Method of Numerical integration? - N for working pendulum \n
 Running with Default configuration? [[y]/n] \n   
     N pendulum = {type_pend} \n   
     time step = {h_step}s \n   
-    theta_0 = {grads0_def}grad \n
-    omega_0 = {omegas0_grad_def}grad \n
+    theta_0 = {degs0_def}deg \n
+    omega_0 = {omegas0_deg_def}deg \n
     lengths = {lengths_def}m \n
     masses = {masses_def}Kg \n
     fps = {frameforsec}s**-1 \n
@@ -83,8 +83,8 @@ Running with Default configuration? [[y]/n] \n
             print(f"\nPend n. {i+1} :")
             lengths = np.append(lengths, ut.right_input(f" Length [{lengths_def[i]}] m:   ", float, lengths_def[i]))
             masses = np.append(masses, ut.right_input(f" Mass [{masses_def[i]}] Kg:   ", float, masses_def[i]))
-            thetas0 = np.append(thetas0, ut.right_input(f" Initial theta [{grads0_def[i]}] Grad:    ", float, grads0_def[i])*2*np.pi/360)
-            omegas0 = np.append(omegas0, ut.right_input(f" Initial omega [{omegas0_grad_def[i]}] Grad/s:   ", float, omegas0_grad_def[i])*2*np.pi/360)
+            thetas0 = np.append(thetas0, ut.right_input(f" Initial theta [{degs0_def[i]}] deg:    ", float, degs0_def[i])*2*np.pi/360)
+            omegas0 = np.append(omegas0, ut.right_input(f" Initial omega [{omegas0_deg_def[i]}] deg/s:   ", float, omegas0_deg_def[i])*2*np.pi/360)
 
 
         g = ut.right_input(f"Gravity [{g}] m/s**2 :   ", float, g)
@@ -119,7 +119,7 @@ Select Mode: \n
         n_mode =  ut.right_input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths  \n   5 Gravity \n   0 Nothing \n  ", float, 1)
         perturb_m = np.zeros(5)
         perturb_m[n_mode-1] = perturb
-        perturb = ut.right_input(f"Module of perturbation? [{perturb} grad | {perturb} grad/s | {perturb} Kg | {perturb} m | {perturb} m/s^2]   ", float, perturb)
+        perturb = ut.right_input(f"Module of perturbation? [{perturb} deg | {perturb} deg/s | {perturb} Kg | {perturb} m | {perturb} m/s^2]   ", float, perturb)
         n_pends = ut.right_input(f"Number of pendulums simulated? [n_pends]", int, n_pends)
         fileoutput = f"./video/{dict_animation[mode].__name__}_{n_pend_string[type_pend]}-perturb_{dict_mode[n_mode]}-{perturb}-{f_int.__name__}.mp4"
         fileoutput = ut.right_input("Name output gif [enter to default]:   ", str, fileoutput)
@@ -145,7 +145,7 @@ Select Mode: \n
 
 def input_menu(input_file):
 # default initial conditions
-# initial angle in grad 
+# initial angle in deg 
     i = 0
     with open(input_file, "r") as fh:
         for line in fh:
@@ -159,9 +159,9 @@ def input_menu(input_file):
                 elif i == 3:
                     masses = np.fromiter(map(float, line.split(" ")), dtype=np.float)        
                 elif i == 4:
-                    grads0 = np.fromiter(map(float, line.split(" ")), dtype=np.float)        
+                    degs0 = np.fromiter(map(float, line.split(" ")), dtype=np.float)        
                 elif i == 5:
-                    omegas0_grad = np.fromiter(map(float, line.split(" ")), dtype=np.float)        
+                    omegas0_deg = np.fromiter(map(float, line.split(" ")), dtype=np.float)        
                 elif i == 6:
                     g  = float(line)
                 elif i == 7:
@@ -185,8 +185,8 @@ def input_menu(input_file):
 
     d_f_int = {1:ni.forward_euler, 2:ni.backward_euler, 3:ni.semi_implicit_euler, 4: ni.symplectic_euler, 5:ni.stormer_verlet,  6: ni.velocity_verlet, 7: ni.two_step_adams_bashforth, 8: ni.crank_nicolson, 9: ni.runge_kutta4,}
     f_int = d_f_int[n_i]
-    thetas0 = grads0 * 2 * np.pi /360
-    omegas0  = omegas0_grad * 2 * np.pi / 360
+    thetas0 = degs0 * 2 * np.pi /360
+    omegas0  = omegas0_deg * 2 * np.pi / 360
 
     ## for the butterfly effect
     perturb_m = np.zeros(5)
