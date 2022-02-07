@@ -124,6 +124,137 @@ def animate_pendulum_simple(pend):
     print(" Done             ")
     return anim
 
+def animate_pendulum_energy(pend):
+    fig = plt.figure(figsize = (16, 9))
+    fig.suptitle(f'{pend.full_txt()}', fontsize=10)
+    position = { 'motion':0, 'energy_tot': 1}
+    n = pend.type_pend
+    pend_b = copy.deepcopy(pend)
+# graphs 
+    axes_v = [ fig.add_subplot(2, 1, 1), fig.add_subplot(2, 1, 2)]
+# variables to plot
+    t_plot = []
+    en_tot = []
+    en_p = []
+
+    
+    x_plot = [ [], [], [] ]
+    y_plot = [ [], [], [] ]
+    r_plot = [ [], [], [] ]
+
+    l_max = np.sum((pend.lengths) [0:n:1])
+    axes_v[position['motion']].set_aspect('equal', adjustable='box')
+    axes_v[position['motion']].axis('off')
+    axes_v[position['motion']].set(xlim=(-l_max*1.2, l_max*1.2), ylim=(-l_max*1.2, l_max*1.2))
+    axes_v[position['energy_tot']].set_title("Total Energy", pad=20)
+
+
+    energy = []
+    energy.append(axes_v[position["energy_tot"]].plot([], [], 'o-',label = r'$E_{tot}$',color = 'red',markersize = 2, markerfacecolor = 'red',linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])    
+    axes_v[position['energy_tot']].ticklabel_format(useMathText=True)
+    axes_v[position['energy_tot']].set_xlim(0, pend.time_max)
+    axes_v[position['energy_tot']].set_ylabel(r"$Energy (J)$")
+    axes_v[position['energy_tot']].yaxis.tick_right()
+    axes_v[position['energy_tot']].yaxis.set_label_position("left")
+    axes_v[position['energy_tot']].legend()
+    color_tails = {0: 'xkcd:lime', 1: 'xkcd:peach', 2: 'xkcd:sky blue'}
+    marker_face = {0: 'xkcd:bright green', 1: 'xkcd:salmon', 2: 'xkcd:azure'}
+    ax_pend_lines = [[], [], [], [], []]
+   # different for so it is better from a visual point of view
+
+    # first add the tail so it visualize behind
+
+    ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[n-1],markersize = 4, markerfacecolor = marker_face[n-1],linewidth=1, markevery=1, markeredgecolor = 'k', animated = True)[0])
+
+
+# then add the lines from a mass to another
+    for p in range(n):
+        ax_pend_lines[0].append(axes_v[position["motion"]].plot([], [], color='k', linestyle='-', linewidth=2, animated = True)[0])    
+# then add the points
+    for p in range(n):
+# tail and points
+        ax_pend_lines[1].append(axes_v[position["motion"]].plot([], [], 'o-',color = color_tails[p],markersize = 12, markerfacecolor = marker_face[p],linewidth=2, markevery=1, markeredgecolor = 'k', animated = True)[0])
+
+
+ 
+    anim_text = axes_v[position['motion']].text(0.02, 0.98, '', transform=axes_v[position['motion']].transAxes)
+    time_text = axes_v[position['motion']].text(0.02, 0.94, '', transform=axes_v[position['motion']].transAxes)
+    energy_text = axes_v[position['motion']].text(0.02, 0.90, '', transform=axes_v[position['motion']].transAxes)
+    energy_diff_text = axes_v[position['motion']].text(0.02, 0.86, '', transform=axes_v[position['motion']].transAxes)
+
+     
+    def init():
+        for p in range(len(ax_pend_lines[0])):
+            ax_pend_lines[0][p].set_data([], [])
+        for p in range(len(ax_pend_lines[1])):
+            ax_pend_lines[1][p].set_data([], [])
+        time_text.set_text('')
+        energy_text.set_text('')
+        energy_diff_text.set_text('')
+        anim_text.set_text(f'{pend.f_int.__name__}')
+        return ax_pend_lines[0]+ax_pend_lines[1] + [time_text, energy_text, anim_text] 
+         
+
+    def animate(i):
+        tail = 1000
+        for x in range(pend.fps_jump()):
+            if (pend.f_int == numerical_integration.two_step_adams_bashforth):
+                ((thetas, omegas), (thetas_b, omegas_b))  = pend.f_int(pend, pend_b)
+                pend.set_u(thetas, omegas)
+                pend_b.set_u(thetas_b, omegas_b)
+                pend.increment_time()
+                pend_b.increment_time()
+            elif (pend.f_int == numerical_integration.symplectic_euler) or (pend.f_int == numerical_integration.stormer_verlet):
+                thetas, p_i = pend.f_int(pend)
+                pend.set_q(thetas)
+                pend.set_p(p_i)
+                pend.set_omegas_from_p_q()
+                pend.increment_time()
+            else:    
+                thetas, omegas = pend.f_int(pend)
+                pend.set_u(thetas, omegas)
+                pend.increment_time()
+
+        x, y = pend.get_xy_coords()
+
+        for k in range(n):
+            x_plot[k].append(x[k])
+            y_plot[k].append(y[k])
+
+        t_plot.append(pend.time)
+        ene_tot = pend.total_energy() 
+        en_tot.append(np.sum(ene_tot))
+
+ 
+        # line from the origin to the first mass
+        ax_pend_lines[0][0].set_data([0, x[0]], [0, y[0]])
+        ax_pend_lines[1][0].set_data(x_plot[n-1][max(0, i-tail):i+1], y_plot[n-1][max(0,i-tail):i+1])
+        for j in range(1, n):
+        # line from the i-1 mass to the i mass
+            ax_pend_lines[0][j].set_data([x[j-1], x[j]], [y[j-1], y[j]])
+            ax_pend_lines[1][j].set_data(x_plot[j-1][i], y_plot[j-1][i])
+
+        ax_pend_lines[1][n].set_data(x_plot[n-1][i], y_plot[n-1][i])
+
+        energy[0].set_data(t_plot[::-1], en_tot[::-1])
+        axes_v[position['energy_tot']].relim()
+        axes_v[position['energy_tot']].autoscale_view(True, True, True)
+
+        time_text.set_text('Time = %.1f' % (pend.time))
+        energy_text.set_text('Total Energy = %.9f J' % en_tot[i])
+        energy_diff_text.set_text(f'Error Energy = {((en_tot[i]-en_tot[0])/en_tot[0])*100: .5} %')
+        pend.percentage()
+        return (ax_pend_lines[0]+ ax_pend_lines[1]+ ax_pend_lines[2] + ax_pend_lines[3] + ax_pend_lines[4])
+
+    
+    anim = animation.FuncAnimation(fig, func = animate, init_func = init, interval=max(1000/pend.frameforsec, pend.h_step*1000), frames = pend.get_fps(), repeat = False, blit = True)
+    anim.save(pend.output)
+    print(" Done             ")
+    return anim
+
+
+
+
 
    
 

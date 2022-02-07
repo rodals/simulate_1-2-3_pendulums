@@ -41,7 +41,7 @@ def complete_menu():
     n_pend_string = {1: "single", 2: "double", 3: "triple"}
     dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
     d_f_int = {1:ni.forward_euler, 2:ni.backward_euler, 3:ni.semi_implicit_euler, 4: ni.symplectic_euler, 5:ni.stormer_verlet,  6: ni.velocity_verlet, 7: ni.two_step_adams_bashforth, 8: ni.crank_nicolson, 9: ni.runge_kutta4,}
-    dict_animation = { 1: anime.animate_pendulum_simple,2: anime.animate_pendulum_detailed, 3: anime.animate_the_butterfly_effect}
+    dict_animation = { 1: anime.animate_pendulum_simple,2: anime.animate_pendulum_energy, 3: anime.animate_pendulum_detailed, 4: anime.animate_the_butterfly_effect}
 
     ####### MENU #######
     n_i =  input('''
@@ -104,43 +104,44 @@ Running with Default configuration? [[y]/n] \n
     mode = ut.right_input('''
 Select Mode: \n
    [1] Simple animated pendulum \n
-    2 Detailed animated pendulum \n
-    3 The Butterfly Effect \n
+    2  Simple + Energy animated pendulum \n
+    3  Detailed animated pendulum \n
+    4  The Butterfly Effect \n
   ->''', int, 1)
 
-    if mode == 1 or  mode == 2: 
+    if mode == 1 or  mode == 2 or mode == 3: 
         fileoutput = f"./video/{dict_animation[mode].__name__}_{n_pend_string[type_pend]}_{f_int.__name__}.mp4"
         fileoutput = ut.right_input("Name output gif [enter to default]:   ", str, fileoutput)
         pend = nPendulum(h_step, 0., time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0)
         pend.running(dict_animation[mode].__name__)
 
-    elif mode == 3: 
+    elif mode == 4: 
         n_mode =  ut.right_input("What to perturb?\n  [1] Angles \n   2 Angular Velocities \n   3 First Mass \n   4 Lengths  \n   5 Gravity \n   0 Nothing \n  ", float, 1)
-
+        perturb_m = np.zeros(5)
+        perturb_m[n_mode-1] = perturb
         perturb = ut.right_input(f"Module of perturbation? [{perturb} grad | {perturb} grad/s | {perturb} Kg | {perturb} m | {perturb} m/s^2]   ", float, perturb)
         n_pends = ut.right_input(f"Number of pendulums simulated? [n_pends]", int, n_pends)
         fileoutput = f"./video/{dict_animation[mode].__name__}_{n_pend_string[type_pend]}-perturb_{dict_mode[n_mode]}-{perturb}-{f_int.__name__}.mp4"
         fileoutput = ut.right_input("Name output gif [enter to default]:   ", str, fileoutput)
-
-        print(fileoutput)
         set_n_mode = { 1: nPendulum.set_q, 2: nPendulum.set_omegas, 3: nPendulum.set_masses, 4: nPendulum.set_lengths, 5: nPendulum.set_g}
+        perturb_masses =  np.zeros(type_pend)
+        perturb_masses[0] += perturb_m[2]
         var_n_mode = { 1: thetas0, 2: omegas0, 3: masses, 4: lengths, 5: g}
-        pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0) for i in range(n_pends)]
-        for i in range(n_pends):
-            if (not n_mode == 3):
-                set_n_mode[n_mode](pend[i], var_n_mode[n_mode] + perturb * i)
-            else: 
-                set_n_mode[n_mode](pend[i], np.array([masses[0] + perturb*i, masses[1], masses[2]]))
+        pend = [nPendulum(h_step, 0, time_simulation, frameforsec, f_int, g + perturb_m[4]*i, fileoutput, type_pend, lengths + perturb_m[3]*np.ones(type_pend)*i, masses + perturb_masses*i, thetas0 + perturb_m[0]*np.ones(type_pend)*i, omegas0 + perturb_m[1]*np.ones(type_pend)*i) for i in range(n_pends)]
         pend[0].running(dict_animation[mode].__name__)
 
     else: ut.bye()
-    os.makedirs('./video', exist_ok = True)
+
     t_start = perf_counter()
-    dict_animation[mode](pend)
+    os.makedirs('./video', exist_ok = True)
+    if mode == 4:
+        dict_animation[mode](pend, perturb, dict_mode[n_mode])
+    else: dict_animation[mode](pend)
     t_end = perf_counter()
 
     print(f"Time execution: {t_end - t_start: .4}")
     print(f"Output file: {fileoutput}")
+
 
 def input_menu(input_file):
 # default initial conditions
@@ -179,6 +180,7 @@ def input_menu(input_file):
                     perturb = float(line)
                 elif i == 14:
                     n_pends = int(line)
+
                 i+=1
 
     d_f_int = {1:ni.forward_euler, 2:ni.backward_euler, 3:ni.semi_implicit_euler, 4: ni.symplectic_euler, 5:ni.stormer_verlet,  6: ni.velocity_verlet, 7: ni.two_step_adams_bashforth, 8: ni.crank_nicolson, 9: ni.runge_kutta4,}
@@ -192,12 +194,12 @@ def input_menu(input_file):
     # dictionary to simplify life for input n other things
     n_pend_string = {1: "single", 2: "double", 3: "triple"}
     dict_mode = { 1: "angles",2:"velocities", 3: "masses", 4: "lengths", 5: "gravity", 0: "nothing"}
-    dict_animation = { 1: anime.animate_pendulum_simple,2: anime.animate_pendulum_detailed, 3: anime.animate_the_butterfly_effect}
+    dict_animation = { 1: anime.animate_pendulum_simple,2: anime.animate_pendulum_energy, 3: anime.animate_pendulum_detailed, 4: anime.animate_the_butterfly_effect}
 
-    if mode == 1 or  mode == 2: 
+    if mode == 1 or  mode == 2 or mode == 3: 
         pend = nPendulum(h_step, 0., time_simulation, frameforsec, f_int, g, fileoutput, type_pend, lengths, masses, thetas0, omegas0)
         pend.running(dict_animation[mode].__name__)
-    elif mode == 3: 
+    elif mode == 4: 
         set_n_mode = { 1: nPendulum.set_q, 2: nPendulum.set_omegas, 3: nPendulum.set_masses, 4: nPendulum.set_lengths, 5: nPendulum.set_g}
         perturb_masses =  np.zeros(type_pend)
         perturb_masses[0] += perturb_m[2]
@@ -208,7 +210,7 @@ def input_menu(input_file):
     else: ut.bye()
 
     t_start = perf_counter()
-    if mode == 3:
+    if mode == 4:
         dict_animation[mode](pend, perturb, dict_mode[n_mode])
     else: dict_animation[mode](pend)
     t_end = perf_counter()
