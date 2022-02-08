@@ -1,0 +1,24 @@
+# numerical integration
+8
+# type_pendulum
+3
+# lengths
+1 1 1
+# masses
+1 1 1
+# angles
+170 170 170
+# angular velocities
+0 0 0
+# gravity
+9.81
+# time step
+0.02
+# time_simulation
+100
+# fps
+30
+# Mode 
+2
+# Name output (with extension)
+../input_examples/energy/triple/video/energy-170-0.02-crank_nicolson.mp4

@@ -19,7 +19,7 @@ AUTHOR = 'Andrea Valsecchi'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.3.0'
 
-REQUIRED = ['setuptools', 'matplotlib>=3.5.1', 'numpy>=1.21.5', 'setuptools-cythonize'
+REQUIRED = ['setuptools', 'matplotlib>=3.5.1', 'numpy>=1.21.5', 'ffmpeg',
 ]
 
 EXTRAS = {

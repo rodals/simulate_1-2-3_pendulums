@@ -33,8 +33,16 @@ Detailed example RK4: ![animate_pendulum_detailed_runge_kutta4_single](https://u
 
 First install the requisites from requirements.txt: 
 ```
-$ pip -r requirements.txt 
+$ pip install -r requirements.txt 
 ```
+the requisites are:
+- ffmpeg for saving the animation
+- numpy  for number manipulation
+- matplotlib for plotting the simulation
+
+For installing ffmpeg on your machine:
+https://www.ffmpeg.org/download.html
+
 Then the program can be executed in two ways:   
 1. Execute in the directory simulate_pendulum the file simulate_pendulum.py:
     ```
@@ -45,7 +53,7 @@ Then the program can be executed in two ways:
 
 2. Execute giving in input file(s) txt, there are some examples in the input_examples folder.
     ```
-    $ python3 simulate_pendulum.py input_files.txt
+    $ python3 simulate_pendulum.py input1.txt [input2.txt, ...]
     ```
 ### Method of integration
 The Hamiltonian of the simple pendulum is separable (which means that V(q) and T(p)) so it was possible to use explicit symplectic propagation method which conserves the energy without using Tao's splitting methods for general nonseparable Hamiltonians.
@@ -61,7 +69,7 @@ So for the double and triple pendulum the following methods of integrations are 
 5. Stormer Verlet   (symplectic, implicit, order 2)
 7. Two-step Adams–Bashforth (explicit, order 2)
 8. Crank Nicolson   (implicit, order 2)
-9. Runge kutta 4    (explicit, order 5)
+9. Runge kutta 4    (explicit, order 4)
 
 For the simple, the previous methods plus:
 3. Semi-implicit euler (symplectic, explicit, order 1)
